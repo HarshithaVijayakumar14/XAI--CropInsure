@@ -49,6 +49,39 @@ export interface ShapContribution {
   interpretation: string;
 }
 
+export interface StatutoryCheckItem {
+  check_id: string;
+  title: string;
+  status: 'Passed' | 'Failed' | 'Needs Verification' | 'Not Applicable' | string;
+  details: string;
+  evidence_used: string;
+  rule_reference: string;
+}
+
+export interface MissingEvidenceItem {
+  document_or_evidence: string;
+  required_for: string;
+  status: 'Verified' | 'Pending / Missing' | 'Needs Physical Inspection' | 'Not Applicable' | string;
+  guidance: string;
+}
+
+export interface PMFBYRuleAssessmentResult {
+  loss_category: string;
+  loss_category_description: string;
+  reported_peril: string;
+  is_peril_consistent?: boolean | null;
+  peril_consistency_notes: string;
+  preliminary_triage: string;
+  triage_summary: string;
+  checks: StatutoryCheckItem[];
+  evidence_checklist: MissingEvidenceItem[];
+  applicable_deadline_hours?: number | null;
+  elapsed_hours_to_notification?: number | null;
+  notified_coverage_benchmark?: Record<string, any> | null;
+  disclaimer: string;
+  assessed_at: string;
+}
+
 export interface ClaimAssessment {
   id: number;
   claim_id: number;
@@ -65,6 +98,7 @@ export interface ClaimAssessment {
   missing_evidence_notes?: string;
   data_quality_status: string;
   data_quality_warnings: string[];
+  statutory_rules?: PMFBYRuleAssessmentResult;
   assessed_at: string;
 }
 
@@ -322,4 +356,76 @@ export interface RegionalLanguage {
   is_default?: boolean;
   is_priority?: boolean;
 }
+
+export interface AgriculturalYieldOptions {
+  states: string[];
+  crops: string[];
+  seasons: string[];
+  districts_count: number;
+  model_metadata: {
+    model_id: number;
+    model_name: string;
+    model_version: string;
+    task_type: string;
+    algorithm: string;
+    target: string;
+    dataset_name: string;
+    r2_score: number;
+    mae: number;
+    rmse: number;
+    train_records: number;
+    test_records: number;
+    baseline_mean_yield: number;
+    is_active: boolean;
+  };
+}
+
+export interface AgriculturalYieldRequest {
+  state: string;
+  district: string;
+  crop: string;
+  season: string;
+  area: number;
+}
+
+export interface AgriculturalYieldShapFeature {
+  feature: string;
+  label: string;
+  input_value: string | number;
+  shap_value: number;
+  direction: 'positive' | 'negative' | 'neutral';
+  impact_description: string;
+}
+
+export interface AgriculturalYieldResponse {
+  predicted_yield_tonnes_per_ha: number;
+  predicted_total_production_tonnes: number;
+  cultivated_area_ha: number;
+  unit_yield: string;
+  unit_production: string;
+  baseline_mean_yield: number;
+  difference_from_baseline: number;
+  shap_explanation: {
+    base_value: number;
+    feature_contributions: AgriculturalYieldShapFeature[];
+    top_positive_features: string[];
+    top_negative_features: string[];
+    plain_text_summary: string;
+  };
+  model_info: {
+    model_id: number;
+    model_name: string;
+    model_version: string;
+    algorithm: string;
+    task_type: string;
+    dataset_name: string;
+    r2_score: number;
+    mae: number;
+    rmse: number;
+    is_active: boolean;
+  };
+  disclaimer: string;
+  warnings: string[];
+}
+
 

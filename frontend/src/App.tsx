@@ -12,6 +12,7 @@ import { ModelPerformancePage } from './pages/ModelPerformancePage';
 import { ReportsPage } from './pages/ReportsPage';
 import { AuditHistoryPage } from './pages/AuditHistoryPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { AgriculturalYieldPage } from './pages/AgriculturalYieldPage';
 
 export const App: React.FC = () => {
   return (
@@ -95,6 +96,14 @@ export const App: React.FC = () => {
           element={
             <Layout pageTitle="Audit History & Review Log">
               <AuditHistoryPage />
+            </Layout>
+          }
+        />
+        <Route
+          path="/crop-yield-prediction"
+          element={
+            <Layout pageTitle="Agricultural Crop Yield Predictor">
+              <AgriculturalYieldPage />
             </Layout>
           }
         />

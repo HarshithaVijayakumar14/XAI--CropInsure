@@ -7,3 +7,10 @@ __pycache__/
 venv/
 node_modules/
 .pytest_cache/
+frontend/dist/
+backup_pre_agricultural_training/
+backup_pre_automatic_retrieval/
+data/*.db
+data/*.db-*
+.coverage
+htmlcov/

@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 from backend.app.config import settings
 from backend.app.database.session import engine, Base
 import backend.app.database.models # ensure models are registered
-from backend.app.api import health, dashboard, claims, datasets, models, assessments, reviews, reports, auth, farmer, officer, regional
+from backend.app.api import health, dashboard, claims, datasets, models, assessments, reviews, reports, auth, farmer, officer, regional, external_data
 
 # Create tables
 Base.metadata.create_all(bind=engine)
@@ -56,6 +56,7 @@ app.include_router(models.router, prefix=settings.API_PREFIX, tags=["Models"])
 app.include_router(assessments.router, prefix=settings.API_PREFIX, tags=["Assessments & Explainability"])
 app.include_router(reviews.router, prefix=settings.API_PREFIX, tags=["Human Review & Audit"])
 app.include_router(reports.router, prefix=settings.API_PREFIX, tags=["Reports"])
+app.include_router(external_data.router, prefix=settings.API_PREFIX, tags=["External Agricultural Data"])
 
 @app.get("/")
 def root():

@@ -1,7 +1,7 @@
 import json
 import uuid
 from typing import List, Optional, Tuple, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 import pandas as pd
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, desc
@@ -28,13 +28,30 @@ def create_claim(db: Session, claim_in: ClaimCreate, actor: str = "Assessor") ->
 
     data_dict = claim_in.model_dump()
     data_dict.pop("claim_reference", None)
+    data_provenance = data_dict.pop("data_provenance", None)
 
     # Perform quality checks
     flags = validate_claim_data_quality(data_dict)
 
+    timeline = [
+        {
+            "event": "CLAIM_SUBMITTED",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "stage": "application_submitted",
+            "description": f"Claim registered for {data_dict.get('farmer_name', 'farmer')}."
+        }
+    ]
+    if data_provenance:
+        timeline.append({
+            "event": "DATA_PROVENANCE_RECORDED",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "provenance": data_provenance
+        })
+
     claim = Claim(
         claim_reference=ref,
         data_quality_flags=json.dumps(flags),
+        timeline_events_json=json.dumps(timeline),
         status="Ready for assessment",
         **data_dict
     )

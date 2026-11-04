@@ -4,6 +4,7 @@
     "newClaim": "Apply for Insurance",
     "myClaims": "My Claims",
     "assessment": "AI Assessment",
+    "yieldPrediction": "Crop Yield Predictor",
     "explainability": "Main Reasons (XAI)",
     "data": "Claim Records (Data)",
     "models": "AI Performance",

@@ -1,14 +1,61 @@
 import json
+from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
 from backend.app.database.session import get_db
 from backend.app.database.models import Claim, ClaimAssessment, TrainedModel
-from backend.app.schemas.assessment import AssessmentRequest, AssessmentResponse, ShapFeatureContribution
+from backend.app.schemas.assessment import (
+    AssessmentRequest,
+    AssessmentResponse,
+    ShapFeatureContribution,
+    PMFBYRuleAssessmentResult
+)
 from backend.app.services.claim_service import assess_claim, get_claim_by_id
+from backend.app.services.pmfby_rules_service import PMFBYRuleAssessmentService
 
 router = APIRouter()
+
+def _build_claim_dict(claim: Claim) -> Dict[str, Any]:
+    return {
+        "claim_reference": claim.claim_reference,
+        "farmer_name": claim.farmer_name,
+        "state": claim.state,
+        "district": claim.district,
+        "crop_type": claim.crop_type,
+        "season": claim.season,
+        "cultivated_area": claim.cultivated_area,
+        "sowing_date": claim.sowing_date,
+        "loss_date": claim.loss_date,
+        "loss_description": claim.loss_description,
+        "growth_stage": claim.growth_stage,
+        "observed_rainfall": claim.observed_rainfall,
+        "reference_rainfall": claim.reference_rainfall,
+        "observed_temperature": claim.observed_temperature,
+        "reference_temperature": claim.reference_temperature,
+        "current_ndvi": claim.current_ndvi,
+        "reference_ndvi": claim.reference_ndvi,
+        "created_at": claim.created_at,
+        "policy_reference": claim.policy_reference,
+        "insurance_scheme": claim.insurance_scheme,
+        "sum_insured": claim.sum_insured
+    }
+
+@router.get("/claims/{claim_id}/statutory-rules", response_model=PMFBYRuleAssessmentResult)
+def get_claim_statutory_rules(claim_id: int, db: Session = Depends(get_db)):
+    """
+    Evaluates official PMFBY statutory rules, selective notification deadlines (72h),
+    peril-category consistency, and document verification checklists.
+    Separate from machine learning statistical scoring.
+    """
+    claim = get_claim_by_id(db=db, claim_id=claim_id)
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found")
+    
+    claim_dict = _build_claim_dict(claim)
+    rule_res = PMFBYRuleAssessmentService.evaluate_claim_rules(claim_dict)
+    return PMFBYRuleAssessmentResult(**rule_res)
 
 @router.post("/claims/{claim_id}/assess", response_model=AssessmentResponse)
 def run_claim_assessment(claim_id: int, request: AssessmentRequest = AssessmentRequest(), db: Session = Depends(get_db)):
@@ -29,6 +76,11 @@ def run_claim_assessment(claim_id: int, request: AssessmentRequest = AssessmentR
 
     flags = json.loads(claim.data_quality_flags or "[]")
 
+    # Evaluate Pillar 1 Statutory Rules
+    claim_dict = _build_claim_dict(claim)
+    rule_dict = PMFBYRuleAssessmentService.evaluate_claim_rules(claim_dict)
+    statutory_rules = PMFBYRuleAssessmentResult(**rule_dict)
+
     return AssessmentResponse(
         id=assessment.id,
         claim_id=claim.id,
@@ -45,6 +97,7 @@ def run_claim_assessment(claim_id: int, request: AssessmentRequest = AssessmentR
         missing_evidence_notes=assessment.missing_evidence_notes,
         data_quality_status=assessment.data_quality_status,
         data_quality_warnings=flags,
+        statutory_rules=statutory_rules,
         assessed_at=assessment.assessed_at
     )
 
@@ -63,6 +116,11 @@ def get_claim_assessment(claim_id: int, db: Session = Depends(get_db)):
     contributions = [ShapFeatureContribution(**c) for c in contributions_raw]
     flags = json.loads(claim.data_quality_flags or "[]")
 
+    # Evaluate Pillar 1 Statutory Rules
+    claim_dict = _build_claim_dict(claim)
+    rule_dict = PMFBYRuleAssessmentService.evaluate_claim_rules(claim_dict)
+    statutory_rules = PMFBYRuleAssessmentResult(**rule_dict)
+
     return AssessmentResponse(
         id=assessment.id,
         claim_id=claim.id,
@@ -79,8 +137,10 @@ def get_claim_assessment(claim_id: int, db: Session = Depends(get_db)):
         missing_evidence_notes=assessment.missing_evidence_notes,
         data_quality_status=assessment.data_quality_status,
         data_quality_warnings=flags,
+        statutory_rules=statutory_rules,
         assessed_at=assessment.assessed_at
     )
+
 
 @router.get("/claims/{claim_id}/explanation")
 def get_claim_explanation_details(claim_id: int, db: Session = Depends(get_db)):

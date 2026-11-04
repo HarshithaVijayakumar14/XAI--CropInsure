@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
 
@@ -44,6 +44,7 @@ class ClaimBase(BaseModel):
 class ClaimCreate(ClaimBase):
     claim_reference: Optional[str] = None
     is_demo_record: bool = False
+    data_provenance: Optional[Dict[str, Any]] = None
 
 class ClaimUpdate(BaseModel):
     farmer_name: Optional[str] = None

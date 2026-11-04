@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
-import { Claim, ClaimAssessment, TrainedModel, HumanReview, AuditEvent } from '../types';
+import { Claim, ClaimAssessment, TrainedModel, HumanReview, AuditEvent, PMFBYRuleAssessmentResult } from '../types';
 import {
   ShieldCheck,
   Brain,
@@ -18,7 +18,12 @@ import {
   Activity,
   History,
   RotateCcw,
-  Info
+  Info,
+  Clock,
+  FileCheck,
+  ShieldAlert,
+  Scale,
+  HelpCircle
 } from 'lucide-react';
 import {
   BarChart,
@@ -38,6 +43,7 @@ export const ClaimAssessmentPage: React.FC = () => {
 
   const [claim, setClaim] = useState<Claim | null>(null);
   const [assessment, setAssessment] = useState<ClaimAssessment | null>(null);
+  const [statutoryRules, setStatutoryRules] = useState<PMFBYRuleAssessmentResult | null>(null);
   const [models, setModels] = useState<TrainedModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<number | undefined>(undefined);
   const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([]);
@@ -76,12 +82,17 @@ export const ClaimAssessmentPage: React.FC = () => {
       setAuditEvents(auditRes);
       setReviews(reviewsRes);
 
-      // Try fetching existing assessment
+      // Try fetching existing assessment and statutory rules
       try {
-        const assessRes = await api.getAssessment(targetId);
+        const [assessRes, rulesRes] = await Promise.all([
+          api.getAssessment(targetId).catch(() => null),
+          api.getStatutoryRules(targetId).catch(() => null)
+        ]);
         setAssessment(assessRes);
+        setStatutoryRules(rulesRes);
       } catch {
         setAssessment(null);
+        setStatutoryRules(null);
       }
 
       // Default selected model to active model
@@ -119,6 +130,9 @@ export const ClaimAssessmentPage: React.FC = () => {
       setError(null);
       const res = await api.runAssessment(claim.id, selectedModelId);
       setAssessment(res);
+      if (res.statutory_rules) {
+        setStatutoryRules(res.statutory_rules);
+      }
 
       // Refresh claim and audit
       const [updatedClaim, updatedAudit] = await Promise.all([
@@ -214,6 +228,69 @@ export const ClaimAssessmentPage: React.FC = () => {
         observed: c.observed_value
       }))
     : [];
+
+  const getStatusBadge = (status: string) => {
+    const s = (status || '').toLowerCase();
+    if (s === 'passed') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> PASSED
+        </span>
+      );
+    } else if (s === 'failed') {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+          <XCircle className="w-3 h-3 text-rose-600" /> FAILED
+        </span>
+      );
+    } else if (s.includes('applicable')) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+          <Info className="w-3 h-3 text-slate-500" /> NOT APPLICABLE
+        </span>
+      );
+    } else {
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+          <HelpCircle className="w-3 h-3 text-amber-600" /> NEEDS VERIFICATION
+        </span>
+      );
+    }
+  };
+
+  const getTriageBadge = (triage: string) => {
+    if (triage.includes('Eligible')) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 inline-flex items-center gap-1">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" /> {triage}
+        </span>
+      );
+    } else if (triage.includes('Verification')) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 inline-flex items-center gap-1">
+          <AlertTriangle className="w-3.5 h-3.5 text-amber-700" /> {triage}
+        </span>
+      );
+    } else if (triage.includes('Delayed')) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
+          <Clock className="w-3.5 h-3.5 text-amber-700" /> {triage}
+        </span>
+      );
+    } else if (triage.includes('Ineligible')) {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300 inline-flex items-center gap-1">
+          <XCircle className="w-3.5 h-3.5 text-rose-700" /> {triage}
+        </span>
+      );
+    } else {
+      return (
+        <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800 border border-blue-300 inline-flex items-center gap-1">
+          <Info className="w-3.5 h-3.5 text-blue-700" /> {triage}
+        </span>
+      );
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -348,16 +425,246 @@ export const ClaimAssessmentPage: React.FC = () => {
         </div>
       )}
 
-      {/* Model Assessment Control & Status */}
+      {/* Pillar 1: Statutory PMFBY Scheme Rule & Eligibility Verification */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-slate-100">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 uppercase tracking-wide">
+                Pillar 1
+              </span>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Scale className="w-4 h-4 text-indigo-600" />
+                Statutory PMFBY Scheme Rule & Eligibility Verification
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Deterministic compliance audit under official Pradhan Mantri Fasal Bima Yojana (PMFBY) Operational Guidelines.
+            </p>
+          </div>
+
+          {statutoryRules && (
+            <div className="flex items-center gap-2">
+              {getTriageBadge(statutoryRules.preliminary_triage)}
+            </div>
+          )}
+        </div>
+
+        {statutoryRules ? (() => {
+          const dlCheck = statutoryRules.checks.find((c) => c.check_id === 'notification_deadline');
+          const dryingCheck = statutoryRules.checks.find((c) => c.check_id === 'harvest_drying_window');
+          const flaggedChecks = statutoryRules.checks.filter(
+            (c) => c.status === 'Failed' || c.status === 'Needs Verification'
+          );
+
+          return (
+            <div className="space-y-4">
+              {/* Summary Highlights Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-slate-500">Reported Loss Category</span>
+                  <p className="text-xs font-bold text-slate-800 truncate" title={statutoryRules.loss_category}>
+                    {statutoryRules.loss_category}
+                  </p>
+                  <p className="text-[10px] text-slate-400 line-clamp-2">
+                    {statutoryRules.loss_category_description}
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-slate-500">Peril Consistency Check</span>
+                  <div>
+                    {statutoryRules.is_peril_consistent === true ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Consistent Peril
+                      </span>
+                    ) : statutoryRules.is_peril_consistent === false ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700">
+                        <XCircle className="w-3.5 h-3.5 text-rose-600" /> Inconsistent Peril
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700">
+                        <HelpCircle className="w-3.5 h-3.5 text-amber-600" /> Undetermined
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-slate-400 block truncate" title={statutoryRules.reported_peril}>
+                    Peril: {statutoryRules.reported_peril || 'General Reported Loss'}
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-slate-500">72-Hour Notification Deadline</span>
+                  <div>
+                    {dlCheck?.status === 'Not Applicable' ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-600">
+                        <Info className="w-3.5 h-3.5 text-slate-500" /> Not Applicable (Area Loss)
+                      </span>
+                    ) : dlCheck?.status === 'Passed' ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700">
+                        <Clock className="w-3.5 h-3.5 text-emerald-600" /> Reported in {statutoryRules.elapsed_hours_to_notification ?? 0}h (≤72h)
+                      </span>
+                    ) : dlCheck?.status === 'Failed' ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-700">
+                        <Clock className="w-3.5 h-3.5 text-rose-600" /> Delayed: {statutoryRules.elapsed_hours_to_notification ?? 0}h (&gt;72h)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-700">
+                        <HelpCircle className="w-3.5 h-3.5 text-amber-600" /> Dates Missing
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-slate-400 block">
+                    {dlCheck?.status === 'Not Applicable'
+                      ? 'Area-wide loss governed by CCE/State notice'
+                      : 'Applies strictly to Localized & Post-Harvest claims'}
+                  </span>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1">
+                  <span className="text-[11px] font-medium text-slate-500">Coverage Reference Status</span>
+                  <div>
+                    <span className={`inline-flex items-center gap-1 text-xs font-bold ${
+                      statutoryRules.notified_coverage_benchmark
+                        ? 'text-emerald-700'
+                        : 'text-amber-700'
+                    }`}>
+                      <FileCheck className="w-3.5 h-3.5" />
+                      {statutoryRules.notified_coverage_benchmark
+                        ? 'Notified Crop & Unit Verified'
+                        : 'Area Unverified in Lookup'}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 block truncate">
+                    {claim.crop_type} ({claim.season}) • {claim.district}
+                  </span>
+                </div>
+              </div>
+
+              {/* Post-harvest Drying Notice if applicable */}
+              {dryingCheck && dryingCheck.status !== 'Not Applicable' && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between text-xs text-amber-900">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>
+                      <strong>Post-Harvest Drying Window:</strong> {dryingCheck.details}
+                    </span>
+                  </div>
+                  <div className="shrink-0">
+                    {getStatusBadge(dryingCheck.status)}
+                  </div>
+                </div>
+              )}
+
+              {/* Statutory Check Matrix Table */}
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="bg-slate-50 px-3.5 py-2 border-b border-slate-200 flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700">Detailed PMFBY Compliance Checklist</span>
+                  <span className="text-[10px] text-slate-500 font-mono">{statutoryRules.checks.length} Statutory Rules</span>
+                </div>
+                <div className="divide-y divide-slate-100 text-xs">
+                  {statutoryRules.checks.map((chk) => (
+                    <div key={chk.check_id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/50">
+                      <div className="space-y-0.5 max-w-xl">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-slate-800">{chk.title}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">({chk.rule_reference})</span>
+                        </div>
+                        <p className="text-[11px] text-slate-600">{chk.details}</p>
+                        <p className="text-[10px] text-slate-400">Evidence: {chk.evidence_used}</p>
+                      </div>
+                      <div className="shrink-0">
+                        {getStatusBadge(chk.status)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Evidence Checklist & Unresolved Issues */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Evidence Checklist */}
+                <div className="border border-slate-200 rounded-lg p-3.5 space-y-2 bg-slate-50/50">
+                  <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <FileCheck className="w-3.5 h-3.5 text-indigo-600" />
+                    Documentation & Evidence Audit Checklist
+                  </h4>
+                  <div className="space-y-1.5">
+                    {statutoryRules.evidence_checklist.map((ev, i) => (
+                      <div key={i} className="p-2 bg-white rounded border border-slate-200 text-xs flex items-start justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <span className="font-semibold text-slate-800 block text-[11px]">{ev.document_or_evidence}</span>
+                          <p className="text-[10px] text-slate-500">{ev.guidance}</p>
+                          <span className="text-[9px] text-slate-400">Required for: {ev.required_for}</span>
+                        </div>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0 ${
+                          ev.status === 'Verified'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : ev.status === 'Needs Physical Inspection'
+                            ? 'bg-blue-100 text-blue-800'
+                            : ev.status === 'Pending / Missing'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-slate-100 text-slate-600'
+                        }`}>
+                          {ev.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Unresolved Issues & Disclaimer */}
+                <div className="border border-slate-200 rounded-lg p-3.5 space-y-3 bg-slate-50/50 flex flex-col justify-between">
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                      Unresolved Issues & Field Verification Notes
+                    </h4>
+                    {flaggedChecks.length > 0 ? (
+                      <ul className="list-disc pl-4 space-y-1 text-xs text-amber-800">
+                        {flaggedChecks.map((chk, idx) => (
+                          <li key={idx} className="text-[11px]">
+                            <strong>{chk.title}:</strong> {chk.details}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-emerald-700 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        All statutory preliminary rule checks verified without open issues.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="p-2.5 bg-blue-50/60 border border-blue-200 rounded text-[10px] text-blue-900 leading-relaxed">
+                    <strong>Statutory Authority & Disclaimer:</strong> {statutoryRules.disclaimer}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })() : (
+          <div className="p-6 text-center text-xs text-slate-500">
+            Loading statutory compliance verification...
+          </div>
+        )}
+      </div>
+
+      {/* Pillar 2: Statistical Decision Support (Synthetic Benchmark Model ID 1) */}
       <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
           <div>
-            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-              <Brain className="w-4 h-4 text-agri-600" />
-              AI Decision Support Engine
-            </h3>
-            <p className="text-xs text-slate-500">
-              Evaluate agro-environmental records and calculate the main factors influencing the AI assessment.
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-800 uppercase tracking-wide">
+                Pillar 2
+              </span>
+              <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-600" />
+                Statistical Decision Support (Synthetic Benchmark Model ID 1)
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 mt-1">
+              Machine learning pattern recognition trained on synthetic demonstration records. Used strictly for advisory guidance.
             </p>
           </div>
 
@@ -410,18 +717,20 @@ export const ClaimAssessmentPage: React.FC = () => {
             {/* Prediction Banner */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-1">
-                <span className="text-xs text-slate-500 font-medium">AI Assessment</span>
+                <span className="text-xs text-slate-500 font-medium">Synthetic Benchmark Result</span>
                 <div className="flex items-center gap-2">
                   <p className={`text-xl font-bold ${assessment.prediction_label === 'Approved' ? 'text-emerald-700' : 'text-slate-700'}`}>
                     {assessment.prediction_label || 'Evaluated'}
                   </p>
                   {assessment.prediction_probability !== undefined && (
-                    <span className="text-xs font-mono bg-white px-2 py-0.5 border border-slate-200 rounded text-slate-600" title="How Certain Is the AI?">
-                      {(assessment.prediction_probability * 100).toFixed(1)}% certainty
+                    <span className="text-xs font-mono bg-white px-2 py-0.5 border border-slate-200 rounded text-slate-600" title="Uncalibrated Model Score">
+                      {(assessment.prediction_probability * 100).toFixed(1)}% score
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-400">How Certain Is the AI: {(assessment.prediction_probability !== undefined ? (assessment.prediction_probability * 100).toFixed(1) + '%' : 'N/A')}</p>
+                <p className="text-[10px] text-slate-400">
+                  Uncalibrated Model Score: {(assessment.prediction_probability !== undefined ? (assessment.prediction_probability * 100).toFixed(1) + '%' : 'N/A')} (Ensemble Tree Vote Ratio)
+                </p>
               </div>
 
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-1">
@@ -531,6 +840,10 @@ export const ClaimAssessmentPage: React.FC = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            <div className="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
+              <strong>Advisory Note:</strong> SHAP values indicate statistical feature attributions within the synthetic demonstration benchmark model (Model ID 1). They reflect decision tree vote correlations, not definitive agronomic or legal proof of loss causation.
             </div>
 
             {/* Farmer-Friendly Explanation Card */}

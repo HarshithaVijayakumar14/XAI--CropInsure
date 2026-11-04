@@ -40,3 +40,24 @@ class TrainedModelResponse(BaseModel):
 
 class SetActiveModelRequest(BaseModel):
     model_id: int
+
+class AgriculturalYieldPredictRequest(BaseModel):
+    state: str = Field(..., description="State name (e.g. Karnataka)")
+    district: str = Field(..., description="District name (e.g. Dharwad)")
+    crop: str = Field(..., description="Crop name (e.g. Rice)")
+    season: str = Field(default="Kharif", description="Crop season (e.g. Kharif, Rabi, Whole Year)")
+    area: float = Field(..., gt=0, le=100000, description="Cultivated area in hectares")
+
+class AgriculturalYieldPredictResponse(BaseModel):
+    predicted_yield_tonnes_per_ha: float
+    predicted_total_production_tonnes: float
+    cultivated_area_ha: float
+    unit_yield: str = "Tonnes / Hectare"
+    unit_production: str = "Tonnes"
+    baseline_mean_yield: float
+    difference_from_baseline: float
+    shap_explanation: Dict[str, Any]
+    model_info: Dict[str, Any]
+    disclaimer: str
+    warnings: List[str] = Field(default_factory=list)
+

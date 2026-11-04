@@ -15,7 +15,11 @@ import {
   DamageInfoResponse,
   FarmerExplanationResponse,
   ChatMessageResponse,
-  RegionalLanguage
+  RegionalLanguage,
+  AgriculturalYieldOptions,
+  AgriculturalYieldRequest,
+  AgriculturalYieldResponse,
+  PMFBYRuleAssessmentResult
 } from '../types';
 
 const API_BASE = '/api';
@@ -194,6 +198,21 @@ export const api = {
     }>(res);
   },
 
+  // Agricultural Crop Yield Model (APY-India, Model ID 2)
+  getCropYieldOptions: async () => {
+    const res = await fetch(`${API_BASE}/models/agricultural-yield/options`);
+    return handleResponse<AgriculturalYieldOptions>(res);
+  },
+
+  predictCropYield: async (data: AgriculturalYieldRequest) => {
+    const res = await fetch(`${API_BASE}/models/agricultural-yield/predict`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return handleResponse<AgriculturalYieldResponse>(res);
+  },
+
   // Assessments
   runAssessment: async (claimId: number, modelId?: number) => {
     const res = await fetch(`${API_BASE}/claims/${claimId}/assess`, {
@@ -207,6 +226,11 @@ export const api = {
   getAssessment: async (claimId: number) => {
     const res = await fetch(`${API_BASE}/claims/${claimId}/assessment`);
     return handleResponse<ClaimAssessment>(res);
+  },
+
+  getStatutoryRules: async (claimId: number) => {
+    const res = await fetch(`${API_BASE}/claims/${claimId}/statutory-rules`);
+    return handleResponse<PMFBYRuleAssessmentResult>(res);
   },
 
   // Reviews & Audit
@@ -450,6 +474,99 @@ export const api = {
         body: formData
       });
       return handleResponse<{ success: boolean; transcript: string; language_code?: string; message?: string }>(res);
+    }
+  },
+
+  // External Agricultural Data Services
+  external: {
+    fetchWeather: async (payload: {
+      state: string;
+      district: string;
+      start_date: string;
+      end_date: string;
+      latitude?: number;
+      longitude?: number;
+    }) => {
+      const res = await fetch(`${API_BASE}/external/weather`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return handleResponse<{
+        status: string;
+        is_automatic: boolean;
+        source?: string;
+        retrieval_date?: string;
+        observation_period?: string;
+        resolved_latitude?: number;
+        resolved_longitude?: number;
+        coordinate_source?: string;
+        data?: {
+          observed_rainfall: number;
+          reference_rainfall: number;
+          observed_temperature: number;
+          reference_temperature: number;
+          rainfall_unit: string;
+          temperature_unit: string;
+        };
+        error?: string;
+        disclaimer?: string;
+      }>(res);
+    },
+
+    fetchPmfbyReference: async (payload: {
+      state: string;
+      district: string;
+      crop: string;
+      season: string;
+      year?: number;
+    }) => {
+      const res = await fetch(`${API_BASE}/external/pmfby-reference`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return handleResponse<{
+        matched: boolean;
+        source: string;
+        reference_period?: string;
+        notified_district?: string;
+        notified_state?: string;
+        notified_crop?: string;
+        sum_insured_per_ha?: number;
+        actuarial_premium_rate_pct?: number;
+        farmer_share_pct?: number;
+        indemnity_level_pct?: number;
+        insurance_company?: string;
+        message?: string;
+        disclaimer?: string;
+      }>(res);
+    },
+
+    fetchSatelliteNdvi: async (payload: {
+      state: string;
+      district: string;
+      observation_date: string;
+      latitude?: number;
+      longitude?: number;
+    }) => {
+      const res = await fetch(`${API_BASE}/external/satellite-ndvi`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return handleResponse<{
+        status: string;
+        observation_status: string;
+        source: string;
+        check_date: string;
+        reason?: string;
+        farmer_guidance?: string;
+        data?: {
+          current_ndvi?: number | null;
+          reference_ndvi?: number | null;
+        };
+      }>(res);
     }
   }
 };

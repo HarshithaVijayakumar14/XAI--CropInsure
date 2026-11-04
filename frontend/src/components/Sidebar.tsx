@@ -24,6 +24,7 @@ export const Sidebar: React.FC = () => {
     { key: 'nav.newClaim', name: 'Apply for Insurance', href: '/new-claim', icon: FilePlus },
     { key: 'nav.myClaims', name: 'My Claims', href: '/claims', icon: ClipboardList },
     { key: 'nav.assessment', name: 'AI Assessment', href: '/claims/assessment', icon: ShieldCheck },
+    { key: 'nav.yieldPrediction', name: 'Crop Yield Predictor', href: '/crop-yield-prediction', icon: Sprout },
     { key: 'nav.settings', name: 'Profile & Settings', href: '/settings', icon: Settings }
   ];
 
@@ -32,6 +33,7 @@ export const Sidebar: React.FC = () => {
     { key: 'nav.newClaim', name: 'Submit New Claim', href: '/new-claim', icon: FilePlus },
     { key: 'nav.myClaims', name: 'Claims Management', href: '/claims', icon: ClipboardList },
     { key: 'nav.assessment', name: 'AI Assessment', href: '/claims/assessment', icon: ShieldCheck },
+    { key: 'nav.yieldPrediction', name: 'Crop Yield Predictor', href: '/crop-yield-prediction', icon: Sprout },
     { key: 'nav.explainability', name: 'Main Reasons (XAI)', href: '/explainability', icon: Brain },
     { key: 'nav.data', name: 'Claim Records (Data)', href: '/data', icon: Database },
     { key: 'nav.models', name: 'AI Performance', href: '/models', icon: Cpu },
