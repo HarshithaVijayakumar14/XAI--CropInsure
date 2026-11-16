@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { TrainedModel } from '../types';
+import { useRole } from '../context/RoleContext';
+import { translateShapText } from '../i18n/shapTranslations';
 import {
   Brain,
   Sparkles,
@@ -25,6 +27,7 @@ import {
 } from 'recharts';
 
 export const ExplainabilityPage: React.FC = () => {
+  const { language, t } = useRole();
   const [models, setModels] = useState<TrainedModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<number | undefined>(undefined);
   const [globalImportance, setGlobalImportance] = useState<any[]>([]);
@@ -136,15 +139,18 @@ export const ExplainabilityPage: React.FC = () => {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 layout="vertical"
-                data={globalImportance}
+                data={globalImportance.map((item) => ({
+                  ...item,
+                  displayName: translateShapText(item.name, language)
+                }))}
                 margin={{ top: 10, right: 30, left: 120, bottom: 10 }}
               >
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
                 <XAxis type="number" tick={{ fontSize: 10 }} stroke="#94a3b8" />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={140} stroke="#94a3b8" />
+                <YAxis type="category" dataKey="displayName" tick={{ fontSize: 10 }} width={140} stroke="#94a3b8" />
                 <Tooltip
                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#f8fafc', fontSize: '11px' }}
-                  formatter={(val: any) => [`${val}`, 'Mean |SHAP| Impact']}
+                  formatter={(val: any) => [`${val}`, translateShapText('Mean |SHAP| Impact', language)]}
                 />
                 <Bar dataKey="importance" fill="#15803d" radius={[0, 4, 4, 0]} name="Importance" />
               </BarChart>

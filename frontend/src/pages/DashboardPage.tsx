@@ -14,6 +14,7 @@ import { useRole } from '../context/RoleContext';
 import { useVoice } from '../hooks/useVoice';
 import { SpeakButton } from '../components/SpeakButton';
 import { SUPPORTED_LANGUAGES } from '../i18n';
+import { translateShapText, translateFarmerParagraph } from '../i18n/shapTranslations';
 import {
   Sprout,
   CheckCircle2,
@@ -644,7 +645,7 @@ export const DashboardPage: React.FC = () => {
                     </div>
                     <SpeakButton
                       id="xai-explanation-audio"
-                      text={`${t("Why Was My Claim Assessed This Way?")}. ${explanation.main_reasons.map(r => `${r.factor_name}: ${r.what_we_know}. ${r.why_it_matters}`).join('. ')}`}
+                      text={`${t("Why Was My Claim Assessed This Way?")}. ${explanation.main_reasons.map(r => `${translateShapText(r.factor_name, language)}: ${translateShapText(r.what_we_know, language)}. ${translateShapText(r.why_it_matters, language)}`).join('. ')}`}
                       lang={language}
                       activeId={activeSpeechId}
                       isPlaying={isPlaying}
@@ -666,7 +667,7 @@ export const DashboardPage: React.FC = () => {
                           className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2 text-xs"
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-bold text-sm text-slate-800">{reason.factor_name}</span>
+                            <span className="font-bold text-sm text-slate-800">{translateShapText(reason.factor_name, language)}</span>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               reason.influence === 'supports'
                                 ? 'bg-emerald-100 text-emerald-800'
@@ -674,14 +675,14 @@ export const DashboardPage: React.FC = () => {
                                 ? 'bg-amber-100 text-amber-800'
                                 : 'bg-slate-200 text-slate-700'
                             }`}>
-                              {reason.influence === 'supports' ? 'Supports Claim (+)' : reason.influence === 'requires_checking' ? 'Needs Checking (!)' : 'Neutral'}
+                              {reason.influence === 'supports' ? translateShapText('Supports Claim (+)', language) : reason.influence === 'requires_checking' ? translateShapText('Needs Checking (!)', language) : translateShapText('Neutral', language)}
                             </span>
                           </div>
 
-                          <p><strong className="text-slate-600">What we know:</strong> {reason.what_we_know}</p>
-                          <p><strong className="text-slate-600">Why it matters:</strong> {reason.why_it_matters}</p>
+                          <p><strong className="text-slate-600">{translateShapText('What we know:', language)}</strong> {translateShapText(reason.what_we_know, language)}</p>
+                          <p><strong className="text-slate-600">{translateShapText('Why it matters:', language)}</strong> {translateShapText(reason.why_it_matters, language)}</p>
                           <p className="text-[11px] text-slate-500 pt-1 border-t border-slate-200">
-                            <strong>Verification Status:</strong> {reason.verification_status}
+                            <strong>{translateShapText('Verification Status:', language)}</strong> {translateShapText(reason.verification_status, language)}
                           </p>
                         </div>
                       ))}
@@ -694,7 +695,7 @@ export const DashboardPage: React.FC = () => {
                       {t("How Different Factors Influenced This Claim")} ({explanation.claim_reference})
                     </h4>
                     <p className="text-[11px] text-slate-500">
-                      This summary applies strictly to this specific application and does not represent other farmers' claims.
+                      {translateShapText("This summary applies strictly to this specific application and does not represent other farmers' claims.", language)}
                     </p>
                     <div className="flex flex-wrap gap-2 pt-1">
                       {explanation.visual_summary.map((item, idx) => (
@@ -708,7 +709,7 @@ export const DashboardPage: React.FC = () => {
                               : 'bg-amber-50 text-amber-800 border-amber-200'
                           }`}
                         >
-                          {item.factor}: {item.status}
+                          {translateShapText(item.factor, language)}: {translateShapText(item.status, language)}
                         </span>
                       ))}
                     </div>

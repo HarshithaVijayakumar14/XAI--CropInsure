@@ -41,6 +41,7 @@ def translate_text(req: TranslationRequest):
     return res
 
 @router.post("/translate-batch")
+@router.post("/translate/batch")
 def translate_batch(req: BatchTranslationRequest):
     """Translates multiple text strings into target regional language."""
     results = []

@@ -9,6 +9,7 @@ import {
 import { useRole } from '../context/RoleContext';
 import { useVoice } from '../hooks/useVoice';
 import { SpeakButton } from '../components/SpeakButton';
+import { translateShapText, translateFarmerParagraph } from '../i18n/shapTranslations';
 import {
   Sprout,
   Wheat,
@@ -281,10 +282,10 @@ export const AgriculturalYieldPage: React.FC = () => {
   const chartData = result
     ? result.shap_explanation.feature_contributions.map((c) => ({
         feature: c.feature,
-        label: `${c.label} (${c.input_value})`,
+        label: `${translateShapText(c.label, language)} (${c.input_value})`,
         shap_value: c.shap_value,
         direction: c.direction,
-        impact: c.impact_description
+        impact: translateShapText(c.impact_description, language)
       }))
     : [];
 
@@ -303,7 +304,7 @@ export const AgriculturalYieldPage: React.FC = () => {
   ) as AgriculturalYieldCrop | undefined;
 
   // Audio explanation text
-  const audioText = result ? result.farmer_friendly_explanation : '';
+  const audioText = result ? translateFarmerParagraph(result.farmer_friendly_explanation, language) : '';
 
   return (
     <div className="space-y-6 pb-12 max-w-7xl mx-auto">
@@ -836,10 +837,10 @@ export const AgriculturalYieldPage: React.FC = () => {
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
                       <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                      AI Crop Insurance Eligibility Prediction
+                      {translateShapText("AI Crop Insurance Eligibility Prediction", language)}
                     </span>
                     <h3 className="text-lg font-extrabold text-white mt-1">
-                      Preliminary Claim Eligibility Indication
+                      {translateShapText("Preliminary Claim Eligibility Indication", language)}
                     </h3>
                   </div>
 
@@ -847,17 +848,17 @@ export const AgriculturalYieldPage: React.FC = () => {
                     {result.predicted_insurance_eligibility === 'Likely Eligible for Insurance Claim' ? (
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wide uppercase bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20">
                         <CheckCircle2 className="w-4 h-4 text-slate-950" />
-                        Likely Eligible for Insurance Claim
+                        {translateShapText("Likely Eligible for Insurance Claim", language)}
                       </span>
                     ) : result.predicted_insurance_eligibility === 'Likely Not Eligible for Insurance Claim' ? (
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wide uppercase bg-slate-800 border border-slate-600 text-slate-200 shadow-sm">
                         <XCircle className="w-4 h-4 text-slate-400" />
-                        Likely Not Eligible for Insurance Claim
+                        {translateShapText("Likely Not Eligible for Insurance Claim", language)}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black tracking-wide uppercase bg-amber-500 text-slate-950 shadow-sm">
                         <AlertTriangle className="w-4 h-4 text-slate-950" />
-                        Insufficient Information to Predict
+                        {translateShapText("Insufficient Information to Predict", language)}
                       </span>
                     )}
                   </div>
@@ -866,10 +867,10 @@ export const AgriculturalYieldPage: React.FC = () => {
                 {/* Indication Detail Banner */}
                 <div className="mt-4 p-4 rounded-xl bg-slate-800/60 border border-slate-700/60 text-xs leading-relaxed space-y-1">
                   <div className="font-bold text-white text-sm">
-                    {result.insurance_indication}
+                    {translateShapText(result.insurance_indication, language)}
                   </div>
                   <p className="text-slate-300">
-                    {result.insurance_indication_detail}
+                    {translateFarmerParagraph(result.insurance_indication_detail, language)}
                   </p>
                 </div>
 
@@ -877,7 +878,7 @@ export const AgriculturalYieldPage: React.FC = () => {
                 <div className="mt-4 space-y-3">
                   <h4 className="text-xs font-bold text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
                     <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                    Reasons Behind Prediction (Plain Language)
+                    {translateShapText("Reasons Behind Prediction (Plain Language)", language)}
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
@@ -885,19 +886,19 @@ export const AgriculturalYieldPage: React.FC = () => {
                     <div className="p-3.5 rounded-xl bg-slate-800/40 border border-emerald-900/40 space-y-2">
                       <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px] uppercase tracking-wider">
                         <TrendingDown className="w-3.5 h-3.5" />
-                        Factors Supporting Claim (Stress / Deficit)
+                        {translateShapText("Factors Supporting Claim (Stress / Deficit)", language)}
                       </div>
                       {result.reasons_supporting_claim && result.reasons_supporting_claim.length > 0 ? (
                         <ul className="space-y-1.5">
                           {result.reasons_supporting_claim.map((r, i) => (
                             <li key={i} className="flex items-start gap-2 text-slate-300 text-[11px] leading-relaxed">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 shrink-0" />
-                              <span>{r}</span>
+                              <span>{translateShapText(r, language)}</span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-[11px] text-slate-400 italic">No significant agronomic deficits detected for this scenario.</p>
+                        <p className="text-[11px] text-slate-400 italic">{translateShapText("No significant agronomic deficits detected for this scenario.", language)}</p>
                       )}
                     </div>
 
@@ -905,19 +906,19 @@ export const AgriculturalYieldPage: React.FC = () => {
                     <div className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 space-y-2">
                       <div className="flex items-center gap-1.5 text-sky-400 font-bold text-[11px] uppercase tracking-wider">
                         <TrendingUp className="w-3.5 h-3.5" />
-                        Factors Indicating Crop Health / Favorable Yield
+                        {translateShapText("Factors Indicating Crop Health / Favorable Yield", language)}
                       </div>
                       {result.reasons_against_claim && result.reasons_against_claim.length > 0 ? (
                         <ul className="space-y-1.5">
                           {result.reasons_against_claim.map((r, i) => (
                             <li key={i} className="flex items-start gap-2 text-slate-300 text-[11px] leading-relaxed">
                               <span className="w-1.5 h-1.5 rounded-full bg-sky-400 mt-1.5 shrink-0" />
-                              <span>{r}</span>
+                              <span>{translateShapText(r, language)}</span>
                             </li>
                           ))}
                         </ul>
                       ) : (
-                        <p className="text-[11px] text-slate-400 italic">No strong opposing factors noted; weather and yield point to risk.</p>
+                        <p className="text-[11px] text-slate-400 italic">{translateShapText("No strong opposing factors noted; weather and yield point to risk.", language)}</p>
                       )}
                     </div>
                   </div>
@@ -927,8 +928,8 @@ export const AgriculturalYieldPage: React.FC = () => {
                     <div className="p-2.5 rounded-xl bg-slate-800/30 border border-slate-800 text-[11px] text-slate-400 flex items-start gap-2">
                       <Minus className="w-3.5 h-3.5 text-slate-500 mt-0.5 shrink-0" />
                       <div>
-                        <strong className="text-slate-300">Neutral Baseline Conditions: </strong>
-                        {result.neutral_factors.join(' • ')}
+                        <strong className="text-slate-300">{translateShapText("Neutral Baseline Conditions: ", language)}</strong>
+                        {result.neutral_factors.map(f => translateShapText(f, language)).join(' • ')}
                       </div>
                     </div>
                   )}
@@ -937,8 +938,8 @@ export const AgriculturalYieldPage: React.FC = () => {
                 {/* Action Button: Apply for Insurance Claim */}
                 <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="text-xs text-slate-300">
-                    <span className="font-semibold text-white block">Want to submit an insurance claim for this farm?</span>
-                    <span className="text-[11px] text-slate-400">All entered farm and yield details will be automatically pre-filled.</span>
+                    <span className="font-semibold text-white block">{translateShapText("Want to submit an insurance claim for this farm?", language)}</span>
+                    <span className="text-[11px] text-slate-400">{translateShapText("All entered farm and yield details will be automatically pre-filled.", language)}</span>
                   </div>
                   <button
                     type="button"
@@ -963,7 +964,7 @@ export const AgriculturalYieldPage: React.FC = () => {
                     }}
                     className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-400 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-700/30 flex items-center justify-center gap-2 transition transform active:scale-98 cursor-pointer"
                   >
-                    <span>Apply for Insurance Claim</span>
+                    <span>{translateShapText("Apply for Insurance Claim", language)}</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -979,11 +980,11 @@ export const AgriculturalYieldPage: React.FC = () => {
                 <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <Volume2 className="w-4 h-4 text-emerald-400" />
-                    Plain-Language Farmer Explanation
+                    {translateShapText("Plain-Language Farmer Explanation", language)}
                   </h3>
                   <SpeakButton
                     id="farmer-plain-audio"
-                    text={result.farmer_friendly_explanation}
+                    text={translateFarmerParagraph(result.farmer_friendly_explanation, language)}
                     lang={language}
                     label="Listen"
                     activeId={activeSpeechId}
@@ -994,7 +995,7 @@ export const AgriculturalYieldPage: React.FC = () => {
                   />
                 </div>
                 <div className="p-4 rounded-xl bg-slate-800/70 border border-slate-700/60 text-xs leading-relaxed text-slate-200">
-                  <p>{result.farmer_friendly_explanation}</p>
+                  <p>{translateFarmerParagraph(result.farmer_friendly_explanation, language)}</p>
                 </div>
               </div>
 
@@ -1004,18 +1005,18 @@ export const AgriculturalYieldPage: React.FC = () => {
                   <div>
                     <h3 className="text-sm font-bold text-white flex items-center gap-2">
                       <BarChart3 className="w-4 h-4 text-emerald-400" />
-                      Core Question 3 • Why Did The Model Give This Result? (SHAP Explainability)
+                      {translateShapText("Core Question 3 • Why Did The Model Give This Result? (SHAP Explainability)", language)}
                     </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      Genuine SHAP TreeExplainer values showing the exact positive, negative, and neutral factors influencing this forecast.
+                      {translateShapText("Genuine SHAP TreeExplainer values showing the exact positive, negative, and neutral factors influencing this forecast.", language)}
                     </p>
                   </div>
                   <div className="flex items-center gap-3 text-xs">
                     <span className="flex items-center gap-1 text-emerald-400">
-                      <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Positive (+)
+                      <span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> {translateShapText("Positive (+)", language)}
                     </span>
                     <span className="flex items-center gap-1 text-rose-400">
-                      <span className="w-2.5 h-2.5 rounded-sm bg-rose-500" /> Negative (-)
+                      <span className="w-2.5 h-2.5 rounded-sm bg-rose-500" /> {translateShapText("Negative (-)", language)}
                     </span>
                   </div>
                 </div>
@@ -1075,7 +1076,7 @@ export const AgriculturalYieldPage: React.FC = () => {
                 {/* Detailed Contribution Breakdown Cards */}
                 <div className="space-y-2 pt-2">
                   <span className="text-xs font-semibold text-slate-300 block mb-1">
-                    Individual Agro-Climatic Factor Drivers:
+                    {translateShapText("Individual Agro-Climatic Factor Drivers:", language)}
                   </span>
                   {result.shap_explanation.feature_contributions.map((feat) => {
                     const isPos = feat.shap_value > 0.02;
@@ -1087,12 +1088,12 @@ export const AgriculturalYieldPage: React.FC = () => {
                       >
                         <div className="space-y-0.5">
                           <div className="font-bold text-white flex items-center gap-2">
-                            <span>{feat.label}</span>
+                            <span>{translateShapText(feat.label, language)}</span>
                             <span className="text-[11px] font-normal text-slate-400">
                               (Value: <strong className="text-slate-200">{feat.input_value}</strong>)
                             </span>
                           </div>
-                          <p className="text-[11px] text-slate-400">{feat.impact_description}</p>
+                          <p className="text-[11px] text-slate-400">{translateShapText(feat.impact_description, language)}</p>
                         </div>
 
                         <div className="text-right shrink-0 ml-3">

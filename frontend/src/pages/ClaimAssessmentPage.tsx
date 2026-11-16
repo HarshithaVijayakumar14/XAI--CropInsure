@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
 import { Claim, ClaimAssessment, TrainedModel, HumanReview, AuditEvent, PMFBYRuleAssessmentResult } from '../types';
+import { useRole } from '../context/RoleContext';
+import { translateShapText, translateFarmerParagraph } from '../i18n/shapTranslations';
 import {
   ShieldCheck,
   Brain,
@@ -40,6 +42,7 @@ import {
 export const ClaimAssessmentPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { language, t } = useRole();
 
   const [claim, setClaim] = useState<Claim | null>(null);
   const [assessment, setAssessment] = useState<ClaimAssessment | null>(null);
@@ -231,7 +234,7 @@ export const ClaimAssessmentPage: React.FC = () => {
   // Prepare SHAP chart data
   const shapChartData = assessment
     ? assessment.shap_contributions.map((c) => ({
-        name: c.feature_name_display,
+        name: translateShapText(c.feature_name_display, language),
         shap_value: c.shap_value,
         direction: c.direction,
         observed: c.observed_value
@@ -765,17 +768,17 @@ export const ClaimAssessmentPage: React.FC = () => {
             <div className="bg-white border border-slate-200 rounded-lg p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-bold text-slate-800">How Each Factor Influenced the Result (Main Reasons)</h4>
+                  <h4 className="text-xs font-bold text-slate-800">{translateShapText("How Each Factor Influenced the Result (Main Reasons)", language)}</h4>
                   <p className="text-[11px] text-slate-500">
-                    How each agricultural factor shifted the AI assessment toward approval (green +) or rejection (red -)
+                    {translateShapText("How each agricultural factor shifted the AI assessment toward approval (green +) or rejection (red -)", language)}
                   </p>
                 </div>
                 <div className="flex items-center gap-3 text-xs font-medium">
                   <span className="flex items-center gap-1 text-emerald-700">
-                    <span className="w-2.5 h-2.5 bg-emerald-600 rounded-sm" /> Supports Claim (+)
+                    <span className="w-2.5 h-2.5 bg-emerald-600 rounded-sm" /> {translateShapText("Supports Claim (+)", language)}
                   </span>
                   <span className="flex items-center gap-1 text-rose-700">
-                    <span className="w-2.5 h-2.5 bg-rose-600 rounded-sm" /> Opposes Claim (-)
+                    <span className="w-2.5 h-2.5 bg-rose-600 rounded-sm" /> {translateShapText("Opposes Claim (-)", language)}
                   </span>
                 </div>
               </div>
@@ -793,8 +796,8 @@ export const ClaimAssessmentPage: React.FC = () => {
                     <Tooltip
                       contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', color: '#f8fafc', fontSize: '11px' }}
                       formatter={(val: any, name: any, item: any) => [
-                        `${val > 0 ? '+' : ''}${val.toFixed(4)} (Observed: ${item.payload.observed})`,
-                        'Influence on Decision'
+                        `${val > 0 ? '+' : ''}${val.toFixed(4)} (${translateShapText("Observed", language)}: ${item.payload.observed})`,
+                        translateShapText('Influence on Decision', language)
                       ]}
                     />
                     <ReferenceLine x={0} stroke="#475569" strokeWidth={1} />
@@ -816,17 +819,17 @@ export const ClaimAssessmentPage: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-200">
                   <tr>
-                    <th className="py-2.5 px-3">Agricultural Factor</th>
-                    <th className="py-2.5 px-3">Observed Value</th>
-                    <th className="py-2.5 px-3">Influence (SHAP)</th>
-                    <th className="py-2.5 px-3">Direction</th>
-                    <th className="py-2.5 px-3">Plain Explanation</th>
+                    <th className="py-2.5 px-3">{translateShapText("Agricultural Factor", language)}</th>
+                    <th className="py-2.5 px-3">{translateShapText("Observed Value", language)}</th>
+                    <th className="py-2.5 px-3">{translateShapText("Influence (SHAP)", language)}</th>
+                    <th className="py-2.5 px-3">{translateShapText("Direction", language)}</th>
+                    <th className="py-2.5 px-3">{translateShapText("Plain Explanation", language)}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {assessment.shap_contributions.map((c, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/60">
-                      <td className="py-2 px-3 font-medium text-slate-800">{c.feature_name_display}</td>
+                      <td className="py-2 px-3 font-medium text-slate-800">{translateShapText(c.feature_name_display, language)}</td>
                       <td className="py-2 px-3 text-slate-600 font-mono">{String(c.observed_value)}</td>
                       <td className="py-2 px-3 font-mono font-bold">
                         <span className={c.shap_value >= 0 ? 'text-emerald-700' : 'text-rose-700'}>
@@ -841,10 +844,10 @@ export const ClaimAssessmentPage: React.FC = () => {
                             ? 'bg-rose-50 text-rose-700'
                             : 'bg-slate-100 text-slate-600'
                         }`}>
-                          {c.direction === 'positive' ? 'SUPPORTS' : c.direction === 'negative' ? 'OPPOSES' : 'NEUTRAL'}
+                          {c.direction === 'positive' ? translateShapText('SUPPORTS', language) : c.direction === 'negative' ? translateShapText('OPPOSES', language) : translateShapText('NEUTRAL', language)}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-slate-600 text-[11px] max-w-xs">{c.interpretation}</td>
+                      <td className="py-2 px-3 text-slate-600 text-[11px] max-w-xs">{translateShapText(c.interpretation, language)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -859,10 +862,10 @@ export const ClaimAssessmentPage: React.FC = () => {
             <div className="bg-emerald-50/40 border border-emerald-200 rounded-xl p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <FileText className="w-4 h-4 text-emerald-700" />
-                <h4 className="text-sm font-bold text-emerald-950">Why Was This Claim Given This Result? (Plain Explanation)</h4>
+                <h4 className="text-sm font-bold text-emerald-950">{translateShapText("Why Was This Claim Given This Result? (Plain Explanation)", language)}</h4>
               </div>
               <div className="text-xs text-slate-700 leading-relaxed whitespace-pre-line bg-white/80 p-4 rounded-lg border border-emerald-100 shadow-2xs font-sans">
-                {assessment.farmer_friendly_summary}
+                {translateFarmerParagraph(assessment.farmer_friendly_summary, language)}
               </div>
             </div>
 

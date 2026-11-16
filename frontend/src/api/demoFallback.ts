@@ -20,6 +20,7 @@ import {
   TrainedModel,
   PMFBYRuleAssessmentResult
 } from '../types';
+import { translateShapText } from '../i18n/shapTranslations';
 
 const INITIAL_DEMO_CLAIMS: Claim[] = [
   {
@@ -1220,14 +1221,14 @@ export const demoFallback = {
     }),
 
     translate: async (text: string, targetLanguage: string) => ({
-      translated_text: text,
+      translated_text: translateShapText(text, targetLanguage),
       source_lang: 'en-IN',
       target_lang: targetLanguage,
       source: 'offline_client_dictionary'
     }),
 
     translateBatch: async (texts: string[], targetLanguage: string) => ({
-      translations: texts,
+      translations: texts.map((t) => translateShapText(t, targetLanguage)),
       target_lang: targetLanguage,
       source: 'offline_client_dictionary'
     }),

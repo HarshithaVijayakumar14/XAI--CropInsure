@@ -5,6 +5,7 @@ import { Claim } from '../types';
 import { useRole } from '../context/RoleContext';
 import { useVoice } from '../hooks/useVoice';
 import { SpeakButton } from '../components/SpeakButton';
+import { translateShapText, translateFarmerParagraph } from '../i18n/shapTranslations';
 import {
   Search,
   Filter,
@@ -478,21 +479,21 @@ export const ClaimsManagementPage: React.FC = () => {
 
                   {/* AI Eligibility Badge */}
                   <div>
-                    <span className="text-[11px] text-slate-500 block mb-1">Predicted Claim Eligibility</span>
+                    <span className="text-[11px] text-slate-500 block mb-1">{translateShapText("Predicted Claim Eligibility", language)}</span>
                     {selectedClaim.ai_assessment?.predicted_eligibility === 'Likely Eligible for Insurance Claim' || selectedClaim.ai_prediction?.predicted_eligibility === 'Likely Eligible for Insurance Claim' ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase bg-emerald-600 text-white shadow-xs">
                         <CheckCircle2 className="w-4 h-4" />
-                        Likely Eligible for Insurance Claim
+                        {translateShapText("Likely Eligible for Insurance Claim", language)}
                       </span>
                     ) : selectedClaim.ai_assessment?.predicted_eligibility === 'Likely Not Eligible for Insurance Claim' || selectedClaim.ai_prediction?.predicted_eligibility === 'Likely Not Eligible for Insurance Claim' ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase bg-slate-800 text-slate-100 shadow-xs">
                         <XCircle className="w-4 h-4 text-slate-400" />
-                        Likely Not Eligible for Insurance Claim
+                        {translateShapText("Likely Not Eligible for Insurance Claim", language)}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase bg-amber-500 text-slate-950 shadow-xs">
                         <AlertCircle className="w-4 h-4" />
-                        Insufficient Information to Predict
+                        {translateShapText("Insufficient Information to Predict", language)}
                       </span>
                     )}
                   </div>
@@ -500,13 +501,13 @@ export const ClaimsManagementPage: React.FC = () => {
                   {/* Predicted vs Reference Yield */}
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                      <span className="text-[10px] text-slate-400 block">Predicted Yield</span>
+                      <span className="text-[10px] text-slate-400 block">{translateShapText("Predicted Yield", language)}</span>
                       <span className="font-bold text-slate-800 text-sm">
                         {selectedClaim.ai_assessment?.predicted_yield_display || (selectedClaim.expected_yield ? `${selectedClaim.expected_yield} T/Ha` : '2.45 T/Ha')}
                       </span>
                     </div>
                     <div className="p-2.5 rounded-xl bg-white border border-slate-200">
-                      <span className="text-[10px] text-slate-400 block">Historical Baseline</span>
+                      <span className="text-[10px] text-slate-400 block">{translateShapText("Historical Baseline", language)}</span>
                       <span className="font-bold text-slate-800 text-sm">
                         {selectedClaim.ai_assessment?.reference_yield_display || '3.20 T/Ha'}
                       </span>
@@ -516,12 +517,12 @@ export const ClaimsManagementPage: React.FC = () => {
                   {/* Supporting Factors from SHAP */}
                   <div className="space-y-1.5 text-xs">
                     <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
-                      <TrendingDown className="w-3.5 h-3.5 text-emerald-600" /> Factors Supporting Claim:
+                      <TrendingDown className="w-3.5 h-3.5 text-emerald-600" /> {translateShapText("Factors Supporting Claim:", language)}
                     </span>
                     {(selectedClaim.ai_assessment?.reasons_supporting || ['Deficit in seasonal precipitation corroborates yield shortfall']).map((r: string, i: number) => (
                       <div key={i} className="flex items-start gap-1.5 text-slate-600 text-[11px]">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                        <span>{r}</span>
+                        <span>{translateShapText(r, language)}</span>
                       </div>
                     ))}
                   </div>
@@ -530,12 +531,12 @@ export const ClaimsManagementPage: React.FC = () => {
                   {selectedClaim.ai_assessment?.reasons_against && selectedClaim.ai_assessment.reasons_against.length > 0 && (
                     <div className="space-y-1.5 text-xs">
                       <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
-                        <TrendingUp className="w-3.5 h-3.5 text-sky-600" /> Opposing Factors:
+                        <TrendingUp className="w-3.5 h-3.5 text-sky-600" /> {translateShapText("Opposing Factors:", language)}
                       </span>
                       {selectedClaim.ai_assessment.reasons_against.map((r: string, i: number) => (
                         <div key={i} className="flex items-start gap-1.5 text-slate-600 text-[11px]">
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
-                          <span>{r}</span>
+                          <span>{translateShapText(r, language)}</span>
                         </div>
                       ))}
                     </div>
@@ -641,15 +642,15 @@ export const ClaimsManagementPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                   {/* AI Prediction Side */}
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 block">AI Model Forecast</span>
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">{translateShapText("AI Model Forecast", language)}</span>
                     <div className="font-extrabold text-slate-800">
-                      {selectedClaim.comparison?.ai_predicted_eligibility || selectedClaim.ai_assessment?.predicted_eligibility || 'Likely Eligible'}
+                      {translateShapText(selectedClaim.comparison?.ai_predicted_eligibility || selectedClaim.ai_assessment?.predicted_eligibility || 'Likely Eligible', language)}
                     </div>
                     <div className="text-[11px] text-slate-600">
                       Yield: {selectedClaim.comparison?.ai_predicted_yield_display || selectedClaim.ai_assessment?.predicted_yield_display || '2.45 T/Ha'}
                     </div>
                     <p className="text-[11px] text-slate-500 italic">
-                      Main Factor: {selectedClaim.comparison?.ai_main_reason || selectedClaim.ai_assessment?.reasons_supporting?.[0] || 'Statistical pattern match'}
+                      Main Factor: {translateShapText(selectedClaim.comparison?.ai_main_reason || selectedClaim.ai_assessment?.reasons_supporting?.[0] || 'Statistical pattern match', language)}
                     </p>
                   </div>
 

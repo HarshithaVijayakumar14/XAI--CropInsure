@@ -5,6 +5,7 @@ import { Claim } from '../types';
 import { useRole } from '../context/RoleContext';
 import { useVoice } from '../hooks/useVoice';
 import { SpeakButton } from '../components/SpeakButton';
+import { translateShapText, translateFarmerParagraph } from '../i18n/shapTranslations';
 import {
   FilePlus,
   AlertCircle,
@@ -550,17 +551,17 @@ export const NewClaimPage: React.FC = () => {
                 {submittedClaim.ai_assessment?.predicted_eligibility === 'Likely Eligible for Insurance Claim' ? (
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
                     <CheckCircle2 className="w-4 h-4" />
-                    Likely Eligible for Insurance Claim
+                    {translateShapText("Likely Eligible for Insurance Claim", language)}
                   </span>
                 ) : submittedClaim.ai_assessment?.predicted_eligibility === 'Likely Not Eligible for Insurance Claim' ? (
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-800 text-slate-100 shadow-sm">
                     <XCircle className="w-4 h-4 text-slate-400" />
-                    Likely Not Eligible for Insurance Claim
+                    {translateShapText("Likely Not Eligible for Insurance Claim", language)}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-sm">
                     <AlertCircle className="w-4 h-4" />
-                    Insufficient Information to Predict
+                    {translateShapText("Insufficient Information to Predict", language)}
                   </span>
                 )}
               </div>
@@ -569,7 +570,7 @@ export const NewClaimPage: React.FC = () => {
             {/* Farm & Yield Overview Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 block">Insured Crop</span>
+                <span className="text-[11px] text-slate-500 block">{translateShapText("Insured Crop", language)}</span>
                 <span className="text-sm font-bold text-slate-800 mt-0.5 block">
                   {submittedClaim.crop_type}
                 </span>
@@ -579,15 +580,15 @@ export const NewClaimPage: React.FC = () => {
               </div>
 
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 block">Reported Loss</span>
+                <span className="text-[11px] text-slate-500 block">{translateShapText("Reported Loss", language)}</span>
                 <span className="text-sm font-bold text-rose-600 mt-0.5 block">
                   {submittedClaim.reported_loss_pct || (submittedClaim as any).crop_loss_percentage || 0}%
                 </span>
-                <span className="text-[10px] text-slate-400">Farmer self-report</span>
+                <span className="text-[10px] text-slate-400">{translateShapText("Farmer self-report", language)}</span>
               </div>
 
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 block">Expected Harvest Output</span>
+                <span className="text-[11px] text-slate-500 block">{translateShapText("Expected Harvest Output", language)}</span>
                 <span className="text-sm font-bold text-slate-800 mt-0.5 block">
                   {submittedClaim.ai_assessment?.predicted_yield_display || (submittedClaim.expected_yield ? `${submittedClaim.expected_yield} T/Ha` : 'District Baseline')}
                 </span>
@@ -597,7 +598,7 @@ export const NewClaimPage: React.FC = () => {
               </div>
 
               <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                <span className="text-[11px] text-slate-500 block">AI Pattern Confidence</span>
+                <span className="text-[11px] text-slate-500 block">{translateShapText("AI Pattern Confidence", language)}</span>
                 <span className="text-sm font-bold text-slate-800 mt-0.5 block">
                   {submittedClaim.ai_assessment?.confidence_percentage ? `${submittedClaim.ai_assessment.confidence_percentage}%` : '85%'}
                 </span>
@@ -609,7 +610,7 @@ export const NewClaimPage: React.FC = () => {
             <div className="space-y-3">
               <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                Agro-Climatic Factors Influencing This Assessment
+                {translateShapText("Agro-Climatic Factors Influencing This Assessment", language)}
               </h4>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -617,19 +618,19 @@ export const NewClaimPage: React.FC = () => {
                 <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-2">
                   <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs uppercase tracking-wide">
                     <TrendingDown className="w-4 h-4 text-emerald-600" />
-                    Factors Supporting Claim Eligibility (Loss / Deficit)
+                    {translateShapText("Factors Supporting Claim Eligibility (Loss / Deficit)", language)}
                   </div>
                   {submittedClaim.ai_assessment?.reasons_supporting && submittedClaim.ai_assessment.reasons_supporting.length > 0 ? (
                     <ul className="space-y-1.5 text-xs text-slate-700">
                       {submittedClaim.ai_assessment.reasons_supporting.map((r: string, i: number) => (
                         <li key={i} className="flex items-start gap-2 leading-relaxed">
                           <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
-                          <span>{r}</span>
+                          <span>{translateShapText(r, language)}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-slate-500 italic">No severe deficit detected in automatic weather checks.</p>
+                    <p className="text-xs text-slate-500 italic">{translateShapText("No severe deficit detected in automatic weather checks.", language)}</p>
                   )}
                 </div>
 
@@ -637,19 +638,19 @@ export const NewClaimPage: React.FC = () => {
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                   <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs uppercase tracking-wide">
                     <TrendingUp className="w-4 h-4 text-sky-600" />
-                    Factors Opposing Claim / Good Crop Conditions
+                    {translateShapText("Factors Opposing Claim / Good Crop Conditions", language)}
                   </div>
                   {submittedClaim.ai_assessment?.reasons_against && submittedClaim.ai_assessment.reasons_against.length > 0 ? (
                     <ul className="space-y-1.5 text-xs text-slate-700">
                       {submittedClaim.ai_assessment.reasons_against.map((r: string, i: number) => (
                         <li key={i} className="flex items-start gap-2 leading-relaxed">
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
-                          <span>{r}</span>
+                          <span>{translateShapText(r, language)}</span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-xs text-slate-500 italic">No significant mitigating factors detected.</p>
+                    <p className="text-xs text-slate-500 italic">{translateShapText("No significant mitigating factors detected.", language)}</p>
                   )}
                 </div>
               </div>
@@ -657,8 +658,8 @@ export const NewClaimPage: React.FC = () => {
               {/* Farmer Friendly Summary */}
               {submittedClaim.ai_assessment?.farmer_friendly_summary && (
                 <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
-                  <strong className="text-slate-900 block mb-1">Plain Language Assessment Summary:</strong>
-                  {submittedClaim.ai_assessment.farmer_friendly_summary}
+                  <strong className="text-slate-900 block mb-1">{translateShapText("Plain Language Assessment Summary:", language)}</strong>
+                  {translateFarmerParagraph(submittedClaim.ai_assessment.farmer_friendly_summary, language)}
                 </div>
               )}
             </div>
