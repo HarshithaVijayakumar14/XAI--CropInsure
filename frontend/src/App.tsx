@@ -15,9 +15,10 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AgriculturalYieldPage } from './pages/AgriculturalYieldPage';
 
 export const App: React.FC = () => {
+  const basename = (import.meta as any).env?.BASE_URL || '/XAI--CropInsure/';
   return (
     <RoleProvider>
-      <Router>
+      <Router basename={basename}>
         <Routes>
         <Route
           path="/"
