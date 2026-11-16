@@ -60,6 +60,9 @@ export const ClaimAssessmentPage: React.FC = () => {
   const [differsFromModel, setDiffersFromModel] = useState(false);
   const [rationale, setRationale] = useState('');
   const [requiredEvidence, setRequiredEvidence] = useState('');
+  const [verifiedCropLoss, setVerifiedCropLoss] = useState('');
+  const [verifiedCropYield, setVerifiedCropYield] = useState('');
+  const [specificReason, setSpecificReason] = useState('Crop loss verified by ground survey and CCE data');
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewSuccess, setReviewSuccess] = useState(false);
 
@@ -151,20 +154,26 @@ export const ClaimAssessmentPage: React.FC = () => {
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!claim) return;
-    if (!rationale.trim()) {
+    if (!rationale.trim() && !specificReason.trim()) {
       alert("Please enter a rationale explaining your review decision.");
       return;
     }
 
     try {
       setSubmittingReview(true);
+      const combinedRationale = specificReason
+        ? `${specificReason}. ${rationale}`.trim()
+        : rationale;
+
       await api.recordReview(claim.id, {
         reviewer_name: reviewerName,
         reviewer_role: reviewerRole,
         review_decision: reviewDecision,
         differs_from_model: differsFromModel,
-        rationale: rationale,
-        required_evidence: requiredEvidence || undefined
+        rationale: combinedRationale,
+        required_evidence: requiredEvidence || undefined,
+        verified_crop_loss: verifiedCropLoss ? parseFloat(verifiedCropLoss) : undefined,
+        verified_crop_yield: verifiedCropYield ? parseFloat(verifiedCropYield) : undefined,
       });
 
       setReviewSuccess(true);
@@ -937,21 +946,126 @@ export const ClaimAssessmentPage: React.FC = () => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Official Decision</label>
-              <select
-                value={reviewDecision}
-                onChange={(e) => setReviewDecision(e.target.value)}
-                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-semibold text-slate-800"
-              >
-                <option value="Approved">Approved</option>
-                <option value="Rejected">Rejected</option>
-                <option value="Additional Evidence Required">Additional Evidence Required</option>
-                <option value="Escalated">Escalated to District Committee</option>
-              </select>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Official Decision Action</label>
+              <div className="grid grid-cols-3 gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewDecision('Approved');
+                    const isModelApprove = String(assessment?.prediction_label || claim?.ai_assessment?.predicted_eligibility || '').toLowerCase().includes('approv') || String(assessment?.prediction_label || claim?.ai_assessment?.predicted_eligibility || '').toLowerCase().includes('likely eligible');
+                    setDiffersFromModel(!isModelApprove);
+                    setSpecificReason('Crop loss verified by ground survey and CCE data');
+                  }}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg border transition ${
+                    reviewDecision === 'Approved'
+                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  ✓ Approve Claim
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewDecision('Rejected');
+                    const isModelApprove = String(assessment?.prediction_label || claim?.ai_assessment?.predicted_eligibility || '').toLowerCase().includes('approv') || String(assessment?.prediction_label || claim?.ai_assessment?.predicted_eligibility || '').toLowerCase().includes('likely eligible');
+                    setDiffersFromModel(isModelApprove);
+                    setSpecificReason('Yield loss within normal threshold (under 30%)');
+                  }}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg border transition ${
+                    reviewDecision === 'Rejected'
+                      ? 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  ✕ Reject Claim
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReviewDecision('Additional Evidence Required');
+                    setDiffersFromModel(false);
+                    setSpecificReason('Upload crop cutting experiment report or local patwari survey');
+                    setRequiredEvidence('Local revenue patwari loss verification report');
+                  }}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg border transition ${
+                    reviewDecision === 'Additional Evidence Required'
+                      ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-xs'
+                      : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                  }`}
+                >
+                  ? Verification
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Specific Reason & Field Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-1">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Primary Reason for Decision</label>
+              <select
+                value={specificReason}
+                onChange={(e) => setSpecificReason(e.target.value)}
+                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              >
+                {reviewDecision === 'Approved' ? (
+                  <>
+                    <option value="Crop loss verified by ground survey and CCE data">Crop loss verified by ground survey and CCE data</option>
+                    <option value="Rainfall deficit confirmed by local weather station (AWS)">Rainfall deficit confirmed by local weather station (AWS)</option>
+                    <option value="Catastrophic localized calamity (hailstorm/flood) documented">Catastrophic localized calamity (hailstorm/flood) documented</option>
+                    <option value="Pest/disease attack corroborated by block agricultural officer">Pest/disease attack corroborated by block agricultural officer</option>
+                    <option value="Standard statutory PMFBY indemnity criteria met">Standard statutory PMFBY indemnity criteria met</option>
+                  </>
+                ) : reviewDecision === 'Rejected' ? (
+                  <>
+                    <option value="Yield loss within normal threshold (under 30%)">Yield loss within normal threshold (under 30%)</option>
+                    <option value="Normal seasonal rainfall and vegetative NDVI indices observed">Normal seasonal rainfall and vegetative NDVI indices observed</option>
+                    <option value="Unnotified peril outside PMFBY statutory coverage">Unnotified peril outside PMFBY statutory coverage</option>
+                    <option value="Ineligible crop or policy discrepancy">Ineligible crop or policy discrepancy</option>
+                    <option value="Disallowed under scheme guidelines">Disallowed under scheme guidelines</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="Upload crop cutting experiment (CCE) report">Upload crop cutting experiment (CCE) report</option>
+                    <option value="Provide local revenue patwari loss verification report">Provide local revenue patwari loss verification report</option>
+                    <option value="Submit geotagged damage photographs with time stamp">Submit geotagged damage photographs with time stamp</option>
+                    <option value="Provide sowing certificate or land record clarification">Provide sowing certificate or land record clarification</option>
+                  </>
+                )}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Verified Crop Loss (%)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="1"
+                value={verifiedCropLoss}
+                onChange={(e) => setVerifiedCropLoss(e.target.value)}
+                placeholder={`e.g. ${claim.reported_loss_pct || 50}`}
+                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">Verified Crop Yield (Tonnes/Ha)</label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={verifiedCropYield}
+                onChange={(e) => setVerifiedCropYield(e.target.value)}
+                placeholder="e.g. 1.85"
+                className="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-slate-50 border border-slate-200">
             <input
               type="checkbox"
               id="differs"
@@ -960,7 +1074,7 @@ export const ClaimAssessmentPage: React.FC = () => {
               className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
             />
             <label htmlFor="differs" className="text-xs font-medium text-slate-700 cursor-pointer">
-              Decision differs from the ML model's pattern match (Mandatory explanation required in rationale)
+              Decision differs from the ML model's pattern match (Authoritative human override logged to audit trail)
             </label>
           </div>
 
@@ -995,12 +1109,49 @@ export const ClaimAssessmentPage: React.FC = () => {
             <button
               type="submit"
               disabled={submittingReview}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition disabled:opacity-50"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-sm transition disabled:opacity-50 cursor-pointer"
             >
-              {submittingReview ? 'Recording...' : 'Submit Official Review Decision'}
+              {submittingReview ? 'Recording Decision...' : 'Save & Synchronize Official Decision'}
             </button>
           </div>
         </form>
+
+        {/* Section C: Predicted vs Actual Comparison Card */}
+        {claim.comparison && (
+          <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 mt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                <Scale className="w-3.5 h-3.5 text-blue-600" />
+                Predicted vs Actual Synchronized Comparison
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                claim.comparison.agreement_status === 'Concurred'
+                  ? 'bg-emerald-100 text-emerald-800'
+                  : 'bg-amber-100 text-amber-800'
+              }`}>
+                {claim.comparison.agreement_status}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="p-2.5 rounded-lg bg-white border border-slate-200">
+                <span className="text-[10px] text-slate-400 block font-bold uppercase">AI Model Assessment</span>
+                <span className="font-bold text-slate-800">{claim.comparison.ai_predicted_eligibility}</span>
+                <span className="text-[11px] text-slate-500 block mt-0.5">{claim.comparison.ai_predicted_yield_display}</span>
+              </div>
+
+              <div className="p-2.5 rounded-lg bg-white border border-slate-200">
+                <span className="text-[10px] text-slate-400 block font-bold uppercase">Officer Official Decision</span>
+                <span className="font-bold text-slate-800">{claim.comparison.officer_final_decision}</span>
+                <span className="text-[11px] text-slate-500 block mt-0.5">{claim.comparison.officer_verified_yield_display}</span>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-slate-600 leading-relaxed bg-white p-2.5 rounded-lg border border-slate-200">
+              <strong>Comparison Insight:</strong> {claim.comparison.comparison_insight}
+            </p>
+          </div>
+        )}
 
         {/* Existing Reviews on this claim */}
         {reviews.length > 0 && (

@@ -9,6 +9,8 @@ class ReviewCreateRequest(BaseModel):
     differs_from_model: bool = False
     rationale: str = Field(..., min_length=5)
     required_evidence: Optional[str] = None
+    verified_crop_loss: Optional[float] = None
+    verified_crop_yield: Optional[float] = None
     update_workflow_status: Optional[str] = "Human review completed"
 
 class ReviewResponse(BaseModel):
@@ -20,6 +22,8 @@ class ReviewResponse(BaseModel):
     differs_from_model: bool
     rationale: str
     required_evidence: Optional[str] = None
+    verified_crop_loss: Optional[float] = None
+    verified_crop_yield: Optional[float] = None
     reviewed_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

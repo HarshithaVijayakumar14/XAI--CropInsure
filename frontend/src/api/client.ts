@@ -241,6 +241,8 @@ export const api = {
     differs_from_model: boolean;
     rationale: string;
     required_evidence?: string;
+    verified_crop_loss?: number;
+    verified_crop_yield?: number;
   }) => {
     const res = await fetch(`${API_BASE}/claims/${claimId}/review`, {
       method: 'POST',

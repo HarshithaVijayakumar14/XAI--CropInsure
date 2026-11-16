@@ -15,8 +15,22 @@ import {
   AlertCircle,
   Eye,
   CheckCircle,
+  CheckCircle2,
+  XCircle,
   Clock,
-  ArrowUpDown
+  ArrowUpDown,
+  X,
+  Activity,
+  TrendingDown,
+  TrendingUp,
+  UserCheck,
+  ShieldAlert,
+  Sparkles,
+  ExternalLink,
+  ChevronRight,
+  Check,
+  RotateCcw,
+  Info
 } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
@@ -28,6 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
   'Additional evidence required': 'bg-rose-50 text-rose-700 border-rose-200',
   'Human review completed': 'bg-green-100 text-green-800 border-green-300',
   'Approved': 'bg-emerald-100 text-emerald-800 border-emerald-300',
+  'Rejected': 'bg-rose-100 text-rose-800 border-rose-300',
   'Under Assessment': 'bg-amber-50 text-amber-800 border-amber-200'
 };
 
@@ -40,6 +55,20 @@ export const ClaimsManagementPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  const handleViewDetails = async (c: any) => {
+    try {
+      setLoadingDetail(true);
+      const fullClaim = await api.getClaim(c.id);
+      setSelectedClaim(fullClaim);
+    } catch {
+      setSelectedClaim(c);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -289,20 +318,31 @@ export const ClaimsManagementPage: React.FC = () => {
                       </td>
                       <td className="py-3 px-4 text-right space-x-1.5">
                         <button
-                          onClick={() => navigate('/')}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition shadow-xs"
-                          title="View on Dashboard"
+                          onClick={() => handleViewDetails(claim)}
+                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold transition shadow-xs cursor-pointer inline-flex items-center gap-1"
+                          title="View Complete Claim Assessment Details"
                         >
+                          <Eye className="w-3.5 h-3.5" />
                           {t('claims.viewDetails') || 'View Details'}
                         </button>
                         {role === 'officer' && (
-                          <button
-                            onClick={() => handleDelete(claim.id, ref)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition"
-                            title="Delete Claim"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <>
+                            <button
+                              onClick={() => navigate(`/claims/${claim.id}/assessment`)}
+                              className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-300 rounded-lg text-[11px] font-bold transition shadow-xs cursor-pointer inline-flex items-center gap-1"
+                              title="Adjudicate Claim in Officer Workspace"
+                            >
+                              <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                              Review
+                            </button>
+                            <button
+                              onClick={() => handleDelete(claim.id, ref)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg transition cursor-pointer"
+                              title="Delete Claim"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </>
                         )}
                       </td>
                     </tr>
@@ -313,6 +353,366 @@ export const ClaimsManagementPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Claim Detail & 5-Stage Assessment Modal */}
+      {selectedClaim && (
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-4xl w-full border border-slate-200 shadow-2xl overflow-hidden max-h-[92vh] flex flex-col my-auto">
+            
+            {/* Modal Header */}
+            <div className="px-6 py-5 bg-gradient-to-r from-slate-900 to-slate-800 text-white flex items-center justify-between border-b border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-400">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-bold text-base text-emerald-300">
+                      {selectedClaim.claim_reference}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-800 border border-slate-700 text-slate-200">
+                      {selectedClaim.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    {selectedClaim.crop_type} ({selectedClaim.cultivated_area} Ha) • {selectedClaim.village ? `${selectedClaim.village}, ` : ''}{selectedClaim.district}, {selectedClaim.state}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <SpeakButton
+                  id={`modal-claim-${selectedClaim.id}`}
+                  text={`Claim reference ${selectedClaim.claim_reference}. Insured crop: ${selectedClaim.crop_type}, ${selectedClaim.cultivated_area} hectares in ${selectedClaim.district}, ${selectedClaim.state}. AI Assessment: ${selectedClaim.ai_assessment?.predicted_eligibility || selectedClaim.ai_prediction?.predicted_eligibility || 'Evaluated'}. Final Officer Decision: ${selectedClaim.officer_decision?.decision || 'Awaiting Officer Decision'}. Current stage: ${selectedClaim.workflow_stage || selectedClaim.status}.`}
+                  lang={language}
+                  label="Listen"
+                  activeId={activeSpeechId}
+                  isPlaying={isPlaying}
+                  onSpeak={speak}
+                  onStop={stopAudio}
+                  size="sm"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSelectedClaim(null)}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/60 rounded-xl transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              
+              {/* 1. 5-Stage Progress Tracker */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-emerald-600" />
+                    5-Stage Claim Progress Tracker
+                  </h4>
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full">
+                    Stage: {selectedClaim.workflow_stage || selectedClaim.status}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 pt-2">
+                  {(selectedClaim.timeline_stages || [
+                    { stage_number: 1, key: 'submitted', title: 'Claim Submitted', status: 'completed', date: selectedClaim.created_at?.slice(0, 10), description: 'Claim registration received' },
+                    { stage_number: 2, key: 'ai_assessed', title: 'AI Assessment', status: 'completed', date: selectedClaim.created_at?.slice(0, 10), description: 'AI preliminary loss evaluation' },
+                    { stage_number: 3, key: 'officer_review', title: 'Officer Review', status: selectedClaim.officer_decision?.is_decided ? 'completed' : 'in_progress', date: selectedClaim.officer_decision?.decision_date?.slice(0, 10) || 'In Progress', description: 'Assessor inspection & review' },
+                    { stage_number: 4, key: 'verification', title: 'Verification', status: selectedClaim.status === 'Additional evidence required' ? 'in_progress' : (selectedClaim.officer_decision?.is_decided ? 'completed' : 'pending'), date: selectedClaim.officer_decision?.is_decided ? 'Verified' : 'Pending', description: 'Field CCE or loss evidence' },
+                    { stage_number: 5, key: 'final_decision', title: 'Final Decision', status: selectedClaim.officer_decision?.is_decided ? 'completed' : 'pending', date: selectedClaim.officer_decision?.decision_date?.slice(0, 10) || 'Pending', description: selectedClaim.officer_decision?.decision || 'Awaiting officer sign-off' }
+                  ]).map((stg: any) => {
+                    const isDone = stg.status === 'completed';
+                    const isCurrent = stg.status === 'in_progress';
+                    return (
+                      <div
+                        key={stg.stage_number}
+                        className={`p-3 rounded-xl border transition ${
+                          isDone
+                            ? 'bg-emerald-50/70 border-emerald-300 text-emerald-950'
+                            : isCurrent
+                            ? 'bg-blue-50 border-blue-400 text-blue-950 ring-2 ring-blue-300'
+                            : 'bg-white border-slate-200 text-slate-400'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black ${
+                              isDone
+                                ? 'bg-emerald-600 text-white'
+                                : isCurrent
+                                ? 'bg-blue-600 text-white animate-pulse'
+                                : 'bg-slate-200 text-slate-600'
+                            }`}
+                          >
+                            {isDone ? '✓' : stg.stage_number}
+                          </span>
+                          <span className="text-[11px] font-bold truncate">{stg.title}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-500 line-clamp-1">{stg.description}</p>
+                        <span className="text-[9px] font-mono text-slate-400 block mt-1">{stg.date}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 2. Distinct Sections A & B */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                
+                {/* SECTION A: AI-Predicted Result */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      Section A • AI-Predicted Result
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {selectedClaim.ai_assessment?.assessed_at?.slice(0, 16) || selectedClaim.created_at?.slice(0, 16)}
+                    </span>
+                  </div>
+
+                  {/* AI Eligibility Badge */}
+                  <div>
+                    <span className="text-[11px] text-slate-500 block mb-1">Predicted Claim Eligibility</span>
+                    {selectedClaim.ai_assessment?.predicted_eligibility === 'Likely Eligible for Insurance Claim' || selectedClaim.ai_prediction?.predicted_eligibility === 'Likely Eligible for Insurance Claim' ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase bg-emerald-600 text-white shadow-xs">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Likely Eligible for Insurance Claim
+                      </span>
+                    ) : selectedClaim.ai_assessment?.predicted_eligibility === 'Likely Not Eligible for Insurance Claim' || selectedClaim.ai_prediction?.predicted_eligibility === 'Likely Not Eligible for Insurance Claim' ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase bg-slate-800 text-slate-100 shadow-xs">
+                        <XCircle className="w-4 h-4 text-slate-400" />
+                        Likely Not Eligible for Insurance Claim
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase bg-amber-500 text-slate-950 shadow-xs">
+                        <AlertCircle className="w-4 h-4" />
+                        Insufficient Information to Predict
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Predicted vs Reference Yield */}
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block">Predicted Yield</span>
+                      <span className="font-bold text-slate-800 text-sm">
+                        {selectedClaim.ai_assessment?.predicted_yield_display || (selectedClaim.expected_yield ? `${selectedClaim.expected_yield} T/Ha` : '2.45 T/Ha')}
+                      </span>
+                    </div>
+                    <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                      <span className="text-[10px] text-slate-400 block">Historical Baseline</span>
+                      <span className="font-bold text-slate-800 text-sm">
+                        {selectedClaim.ai_assessment?.reference_yield_display || '3.20 T/Ha'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Supporting Factors from SHAP */}
+                  <div className="space-y-1.5 text-xs">
+                    <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1">
+                      <TrendingDown className="w-3.5 h-3.5 text-emerald-600" /> Factors Supporting Claim:
+                    </span>
+                    {(selectedClaim.ai_assessment?.reasons_supporting || ['Deficit in seasonal precipitation corroborates yield shortfall']).map((r: string, i: number) => (
+                      <div key={i} className="flex items-start gap-1.5 text-slate-600 text-[11px]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                        <span>{r}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Mitigating/Opposing Factors */}
+                  {selectedClaim.ai_assessment?.reasons_against && selectedClaim.ai_assessment.reasons_against.length > 0 && (
+                    <div className="space-y-1.5 text-xs">
+                      <span className="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                        <TrendingUp className="w-3.5 h-3.5 text-sky-600" /> Opposing Factors:
+                      </span>
+                      {selectedClaim.ai_assessment.reasons_against.map((r: string, i: number) => (
+                        <div key={i} className="flex items-start gap-1.5 text-slate-600 text-[11px]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
+                          <span>{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* SECTION B: Final Officer Decision */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5 text-blue-600" />
+                      Section B • Final Officer Decision
+                    </span>
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      {selectedClaim.officer_decision?.decision_date ? selectedClaim.officer_decision.decision_date.slice(0, 16) : 'Pending'}
+                    </span>
+                  </div>
+
+                  {selectedClaim.officer_decision?.is_decided ? (
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[11px] text-slate-500 block mb-1">Official Decision</span>
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase shadow-xs ${
+                            selectedClaim.officer_decision.decision === 'Approved'
+                              ? 'bg-emerald-600 text-white'
+                              : selectedClaim.officer_decision.decision === 'Rejected'
+                              ? 'bg-rose-600 text-white'
+                              : 'bg-amber-500 text-slate-950'
+                          }`}
+                        >
+                          {selectedClaim.officer_decision.decision === 'Approved' ? (
+                            <CheckCircle2 className="w-4 h-4" />
+                          ) : (
+                            <XCircle className="w-4 h-4" />
+                          )}
+                          {selectedClaim.officer_decision.decision}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                          <span className="text-[10px] text-slate-400 block">Verified Crop Loss</span>
+                          <span className="font-bold text-slate-800 text-sm">
+                            {selectedClaim.officer_decision.verified_crop_loss_display || (selectedClaim.verified_crop_loss ? `${selectedClaim.verified_crop_loss}%` : `${selectedClaim.reported_loss_pct || 50}%`)}
+                          </span>
+                        </div>
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200">
+                          <span className="text-[10px] text-slate-400 block">Verified Yield</span>
+                          <span className="font-bold text-slate-800 text-sm">
+                            {selectedClaim.officer_decision.verified_crop_yield_display || (selectedClaim.observed_yield ? `${selectedClaim.observed_yield} T/Ha` : 'Not recorded')}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 text-xs space-y-1">
+                        <div className="font-bold text-slate-900">
+                          Assessor: {selectedClaim.officer_decision.officer_name} ({selectedClaim.officer_decision.officer_role})
+                        </div>
+                        <p className="text-slate-600 leading-relaxed">
+                          <strong>Remarks:</strong> {selectedClaim.officer_decision.officer_remarks || selectedClaim.officer_notes || 'Ground survey verification completed.'}
+                        </p>
+                        {selectedClaim.officer_decision.reason_for_decision && (
+                          <p className="text-[11px] text-slate-500">
+                            <strong>Reason:</strong> {selectedClaim.officer_decision.reason_for_decision}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Not yet decided */
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 space-y-2 text-xs">
+                      <div className="flex items-center gap-2 font-bold text-amber-900">
+                        <Clock className="w-4 h-4 text-amber-700 animate-pulse" />
+                        Awaiting Officer Decision
+                      </div>
+                      <p className="text-amber-950 leading-relaxed">
+                        Your claim is currently under review by the designated insurance officer. The final decision will be updated here once the officer completes the statutory loss verification.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 3. SECTION C: Predicted vs Actual Comparison */}
+              <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-600" />
+                    Section C • Predicted vs Actual Comparison
+                  </h4>
+                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                    selectedClaim.comparison?.agreement_status === 'Concurred' || (!selectedClaim.officer_decision?.differs_from_model && selectedClaim.officer_decision?.is_decided)
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : selectedClaim.officer_decision?.differs_from_model
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {selectedClaim.comparison?.agreement_status || (selectedClaim.officer_decision?.differs_from_model ? 'Officer Manual Override' : 'Evaluation Synchronized')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  {/* AI Prediction Side */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">AI Model Forecast</span>
+                    <div className="font-extrabold text-slate-800">
+                      {selectedClaim.comparison?.ai_predicted_eligibility || selectedClaim.ai_assessment?.predicted_eligibility || 'Likely Eligible'}
+                    </div>
+                    <div className="text-[11px] text-slate-600">
+                      Yield: {selectedClaim.comparison?.ai_predicted_yield_display || selectedClaim.ai_assessment?.predicted_yield_display || '2.45 T/Ha'}
+                    </div>
+                    <p className="text-[11px] text-slate-500 italic">
+                      Main Factor: {selectedClaim.comparison?.ai_main_reason || selectedClaim.ai_assessment?.reasons_supporting?.[0] || 'Statistical pattern match'}
+                    </p>
+                  </div>
+
+                  {/* Officer Decision Side */}
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase text-slate-400 block">Officer Final Adjudication</span>
+                    <div className="font-extrabold text-slate-800">
+                      {selectedClaim.comparison?.officer_final_decision || selectedClaim.officer_decision?.decision || 'Awaiting Officer Review'}
+                    </div>
+                    <div className="text-[11px] text-slate-600">
+                      Verified Loss / Yield: {selectedClaim.comparison?.officer_verified_yield_display || selectedClaim.officer_decision?.verified_crop_loss_display || 'Field verification in progress'}
+                    </div>
+                    <p className="text-[11px] text-slate-500 italic">
+                      Assessor Rationale: {selectedClaim.comparison?.officer_reason || selectedClaim.officer_decision?.officer_remarks || 'Pending final assessor sign-off'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Explanation Banner */}
+                <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-950 leading-relaxed flex items-start gap-2.5">
+                  <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                  <div>
+                    <strong className="block text-blue-900 font-bold mb-0.5">Comparison Explanation:</strong>
+                    <span>
+                      {selectedClaim.comparison?.comparison_insight || (
+                        selectedClaim.officer_decision?.differs_from_model
+                          ? 'The authorized officer recorded a manual override based on local field crop-cutting experiments (CCE) or ground patwari reports that differed from regional statistical weather forecasts.'
+                          : 'The officer concurred with the AI preliminary indication following standard PMFBY documentary and weather anomaly verification.'
+                      )}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+              {role === 'officer' ? (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/claims/${selectedClaim.id}/assessment`)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  <UserCheck className="w-3.5 h-3.5" />
+                  Open in Officer Assessment Workspace
+                </button>
+              ) : (
+                <span className="text-xs text-slate-500">
+                  Official Record under PMFBY Scheme
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSelectedClaim(null)}
+                className="px-5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

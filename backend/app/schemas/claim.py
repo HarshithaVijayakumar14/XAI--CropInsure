@@ -82,9 +82,20 @@ class ClaimResponse(ClaimBase):
     id: int
     claim_reference: str
     status: str
+    workflow_stage: Optional[str] = "application_submitted"
+    verified_crop_loss: Optional[float] = None
+    observed_yield: Optional[float] = None
+    officer_notes: Optional[str] = None
+    missing_documents: Optional[str] = "[]"
     data_quality_flags: str
     is_demo_record: bool
     created_at: datetime
     updated_at: datetime
+    
+    # Enriched AI assessment, officer decision, and comparison objects
+    ai_assessment: Optional[Dict[str, Any]] = None
+    officer_decision: Optional[Dict[str, Any]] = None
+    comparison: Optional[Dict[str, Any]] = None
+    timeline_stages: Optional[List[Dict[str, Any]]] = None
 
     model_config = ConfigDict(from_attributes=True)

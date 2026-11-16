@@ -34,10 +34,76 @@ export interface Claim {
   reference_ndvi: number;
   historical_outcome?: string;
   status: string;
+  workflow_stage?: string;
+  verified_crop_loss?: number;
+  officer_notes?: string;
+  missing_documents?: string;
   data_quality_flags: string;
   is_demo_record: boolean;
   created_at: string;
   updated_at: string;
+  
+  // Enriched sections for transparent farmer and officer workflows
+  ai_assessment?: ClaimAiAssessment;
+  ai_prediction?: ClaimAiAssessment;
+  officer_decision?: ClaimOfficerDecision;
+  comparison?: ClaimComparison;
+  timeline_stages?: ClaimProgressStage[];
+}
+
+export interface ClaimAiAssessment {
+  predicted_eligibility: 'Likely Eligible for Insurance Claim' | 'Likely Not Eligible for Insurance Claim' | 'Insufficient Information to Predict' | string;
+  prediction_label: string;
+  prediction_probability: number;
+  confidence_percentage?: number;
+  predicted_yield?: number;
+  predicted_yield_display?: string;
+  reference_yield?: number;
+  reference_yield_display?: string;
+  reasons_supporting: string[];
+  reasons_against: string[];
+  neutral_factors?: string[];
+  shap_contributions?: any[];
+  farmer_friendly_summary?: string;
+  assessed_at?: string;
+  model_id?: number;
+}
+
+export interface ClaimOfficerDecision {
+  status: string;
+  is_decided: boolean;
+  decision: 'Approved' | 'Rejected' | 'Additional Evidence Required' | 'Awaiting Officer Decision' | string;
+  officer_name?: string;
+  officer_role?: string;
+  officer_remarks?: string;
+  reason_for_decision?: string;
+  verified_crop_loss?: number;
+  verified_crop_loss_display?: string;
+  verified_crop_yield?: number;
+  verified_crop_yield_display?: string;
+  required_evidence?: string;
+  differs_from_model?: boolean;
+  decision_date?: string;
+}
+
+export interface ClaimComparison {
+  ai_predicted_eligibility: string;
+  ai_predicted_yield_display: string;
+  ai_main_reason: string;
+  officer_final_decision: string;
+  officer_verified_yield_display: string;
+  officer_reason: string;
+  agreement_status: string;
+  comparison_insight: string;
+}
+
+export interface ClaimProgressStage {
+  stage_number: number;
+  key: string;
+  title: string;
+  status: 'completed' | 'in_progress' | 'pending';
+  date: string;
+  description: string;
 }
 
 export interface ShapContribution {
@@ -357,11 +423,33 @@ export interface RegionalLanguage {
   is_priority?: boolean;
 }
 
+export interface AgriculturalYieldCrop {
+  crop_name: string;
+  historical_median_yield: number;
+  shortfall_threshold: number;
+  unit: string;
+}
+
 export interface AgriculturalYieldOptions {
   states: string[];
-  crops: string[];
+  districts_by_state?: Record<string, string[]>;
+  all_districts_count?: number;
+  crops: Array<string | AgriculturalYieldCrop>;
+  crop_names?: string[];
   seasons: string[];
-  districts_count: number;
+  districts_count?: number;
+  state_defaults?: Record<string, {
+    Annual_Rainfall: number;
+    Avg_Temp: number;
+    Fertilizer_per_ha: number;
+    Pesticide_per_ha: number;
+  }>;
+  district_defaults?: Record<string, {
+    Annual_Rainfall: number;
+    Avg_Temp: number;
+    Fertilizer_per_ha: number;
+    Pesticide_per_ha: number;
+  }>;
   model_metadata: {
     model_id: number;
     model_name: string;
@@ -370,13 +458,31 @@ export interface AgriculturalYieldOptions {
     algorithm: string;
     target: string;
     dataset_name: string;
-    r2_score: number;
-    mae: number;
-    rmse: number;
-    train_records: number;
-    test_records: number;
-    baseline_mean_yield: number;
+    training_records?: number;
+    r2_score?: number;
+    mae?: number;
+    rmse?: number;
+    train_records?: number;
+    test_records?: number;
+    baseline_mean_yield?: number;
     is_active: boolean;
+    regression_metrics?: {
+      random_split_r2: number;
+      random_split_mae: number;
+      random_split_rmse: number;
+      temporal_split_r2: number;
+      temporal_split_mae: number;
+      temporal_split_rmse: number;
+    };
+    classification_metrics?: {
+      temporal_accuracy: number;
+      temporal_precision: number;
+      temporal_recall: number;
+      temporal_f1: number;
+      random_accuracy: number;
+      random_f1: number;
+    };
+    dataset_sources?: string[];
   };
 }
 
@@ -386,6 +492,10 @@ export interface AgriculturalYieldRequest {
   crop: string;
   season: string;
   area: number;
+  annual_rainfall?: number;
+  avg_temperature?: number;
+  fertilizer_per_ha?: number;
+  pesticide_per_ha?: number;
 }
 
 export interface AgriculturalYieldShapFeature {
@@ -403,15 +513,52 @@ export interface AgriculturalYieldResponse {
   cultivated_area_ha: number;
   unit_yield: string;
   unit_production: string;
-  baseline_mean_yield: number;
-  difference_from_baseline: number;
+  predicted_yield_quintals_per_acre?: number;
+  predicted_total_quintals?: number;
+  
+  // Core Question 2: Will yield come or not?
+  yield_classification: 'YES' | 'NO';
+  yield_classification_label: string;
+  classification_probability: number;
+  crop_historical_median_yield: number;
+  crop_yield_threshold: number;
+  shortfall_percentage?: number | null;
+  
+  // AI Crop Insurance Eligibility Prediction (Requirement 1B & 1C)
+  predicted_insurance_eligibility?: 'Likely Eligible for Insurance Claim' | 'Likely Not Eligible for Insurance Claim' | 'Insufficient Information to Predict' | string;
+  insurance_indication: string;
+  insurance_indication_detail: string;
+  reasons_supporting_claim?: string[];
+  reasons_against_claim?: string[];
+  neutral_factors?: string[];
+  
+  // Core Question 3: Why did model give this result?
   shap_explanation: {
     base_value: number;
     feature_contributions: AgriculturalYieldShapFeature[];
     top_positive_features: string[];
     top_negative_features: string[];
+    neutral_features?: string[];
     plain_text_summary: string;
   };
+  farmer_friendly_explanation: string;
+  
+  // Environmental & Agro-climatic Inputs
+  environmental_inputs?: {
+    annual_rainfall_mm: number;
+    annual_rainfall_provenance: string;
+    avg_temperature_c: number;
+    avg_temperature_provenance: string;
+    fertilizer_kg_per_ha: number;
+    fertilizer_provenance: string;
+    pesticide_kg_per_ha: number;
+    pesticide_provenance: string;
+    satellite_ndvi_status?: string;
+  };
+
+  // Backward compatibility
+  baseline_mean_yield: number;
+  difference_from_baseline: number;
   model_info: {
     model_id: number;
     model_name: string;
@@ -419,9 +566,12 @@ export interface AgriculturalYieldResponse {
     algorithm: string;
     task_type: string;
     dataset_name: string;
-    r2_score: number;
-    mae: number;
-    rmse: number;
+    r2_score?: number;
+    mae?: number;
+    rmse?: number;
+    temporal_r2?: number;
+    temporal_f1?: number;
+    training_records?: number;
     is_active: boolean;
   };
   disclaimer: string;

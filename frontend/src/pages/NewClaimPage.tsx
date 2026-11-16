@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../api/client';
+import { Claim } from '../types';
 import { useRole } from '../context/RoleContext';
 import { useVoice } from '../hooks/useVoice';
 import { SpeakButton } from '../components/SpeakButton';
@@ -8,7 +9,9 @@ import {
   FilePlus,
   AlertCircle,
   CheckCircle2,
+  XCircle,
   ArrowLeft,
+  ArrowRight,
   RotateCcw,
   Info,
   Calendar,
@@ -24,9 +27,15 @@ import {
   RefreshCw,
   Satellite,
   ShieldCheck,
+  ShieldAlert,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Clock,
+  TrendingDown,
+  TrendingUp,
+  Eye,
+  Home
 } from 'lucide-react';
 
 const CROPS = ["Rice/Paddy", "Wheat", "Cotton", "Maize", "Groundnut", "Mustard", "Soybean", "Sugarcane"];
@@ -41,6 +50,8 @@ const STAGES = ["Germination", "Vegetative Growth", "Flowering / Tasseling", "Gr
 
 export const NewClaimPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as any;
   const { language, t, user } = useRole();
   const {
     isPlaying,
@@ -56,6 +67,8 @@ export const NewClaimPage: React.FC = () => {
 
   // Mode Selection: 'auto' | 'manual' | 'combined'
   const [entryMode, setEntryMode] = useState<'auto' | 'manual' | 'combined'>('auto');
+  const [submittedClaim, setSubmittedClaim] = useState<Claim | null>(null);
+  const [prefillNotice, setPrefillNotice] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     farmer_name: user?.full_name || '',
@@ -108,6 +121,28 @@ export const NewClaimPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [successRef, setSuccessRef] = useState<string | null>(null);
+
+  // Pre-fill form if redirected from Crop Yield & Eligibility Predictor
+  useEffect(() => {
+    if (locationState?.fromPredictor) {
+      setFormData(prev => {
+        const matchedCrop = CROPS.find(c => c.toLowerCase().includes(String(locationState.crop || '').toLowerCase())) || locationState.crop || prev.crop_type;
+        return {
+          ...prev,
+          state: locationState.state || prev.state,
+          district: locationState.district || prev.district,
+          crop_type: matchedCrop,
+          season: locationState.season || prev.season,
+          cultivated_area: locationState.area ? String(locationState.area) : prev.cultivated_area,
+          observed_rainfall: locationState.rainfall ? String(locationState.rainfall) : prev.observed_rainfall,
+          observed_temperature: locationState.temperature ? String(locationState.temperature) : prev.observed_temperature,
+        };
+      });
+      setPrefillNotice(
+        `Pre-filled from your Crop Yield & Eligibility Prediction: ${locationState.crop} (${locationState.area} Ha) in ${locationState.district}, ${locationState.state}. (Predicted Yield: ${locationState.predicted_yield} T/Ha • AI Indication: ${locationState.predicted_eligibility || 'Evaluated'})`
+      );
+    }
+  }, [locationState]);
 
   // Handler for normal form fields
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -342,10 +377,9 @@ export const NewClaimPage: React.FC = () => {
       };
 
       const created = await api.createClaim(payload);
+      setSubmittedClaim(created);
       setSuccessRef(created.claim_reference || `CLM-${created.id}`);
-      setTimeout(() => {
-        navigate('/');
-      }, 2500);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err: any) {
       setError(err.message || 'Failed to register claim');
     } finally {
@@ -443,24 +477,242 @@ export const NewClaimPage: React.FC = () => {
         </div>
       )}
 
-      {/* Success Banner */}
-      {successRef && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-3xl p-6 text-center space-y-2 animate-fadeIn">
-          <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-          <h2 className="text-lg font-bold text-emerald-900">
-            {t('forms.claimSubmittedSuccess') || 'Claim Application Submitted Successfully!'}
-          </h2>
-          <p className="text-xs sm:text-sm text-emerald-700">
-            {t('forms.claimRefMsg') || 'Your Reference Number is:'}{' '}
-            <span className="font-mono font-bold bg-white px-2 py-1 rounded-md border border-emerald-300">
-              {successRef}
-            </span>
-          </p>
-          <p className="text-xs text-slate-500">Redirecting to your dashboard...</p>
+      {/* Prefill from Predictor Banner */}
+      {prefillNotice && !submittedClaim && (
+        <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 flex items-start justify-between gap-3 text-emerald-950 text-xs shadow-xs animate-fadeIn">
+          <div className="flex items-start gap-2.5">
+            <Sparkles className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+            <div>
+              <span className="font-bold text-emerald-800">Pre-filled from Crop Yield & Eligibility Predictor: </span>
+              <span>{prefillNotice}</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPrefillNotice(null)}
+            className="text-[10px] text-emerald-700 hover:text-emerald-900 underline font-semibold shrink-0 cursor-pointer"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
-      {/* Validation Warnings / Error Banner */}
+      {submittedClaim ? (
+        <div className="space-y-6 animate-fadeIn">
+          {/* Submission Success Card */}
+          <div className="bg-white border border-emerald-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-4 text-center relative overflow-hidden">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 border border-emerald-300 text-emerald-600 flex items-center justify-center mx-auto">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+            <div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 mb-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+                Claim Registered Successfully
+              </span>
+              <h2 className="text-2xl font-black text-slate-900">
+                {t('forms.claimSubmittedSuccess') || 'Claim Application Submitted Successfully!'}
+              </h2>
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <span className="text-xs text-slate-500">Official Claim Reference:</span>
+                <span className="font-mono font-extrabold text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg">
+                  {submittedClaim.claim_reference}
+                </span>
+              </div>
+            </div>
+
+            {/* Workflow Stage / Under Review Banner */}
+            <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 max-w-xl mx-auto flex items-center justify-center gap-2.5 text-xs text-blue-900 font-medium">
+              <Clock className="w-4 h-4 text-blue-600 animate-pulse shrink-0" />
+              <span>
+                Current Workflow Status: <strong className="font-bold text-blue-950">{submittedClaim.workflow_stage || 'Submitted / Under Officer Review'}</strong>
+              </span>
+            </div>
+          </div>
+
+          {/* DEDICATED SECTION: AI-Based Preliminary Claim Assessment */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+              <div>
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Activity className="w-4 h-4 text-emerald-600" />
+                  Preliminary AI Evaluation
+                </span>
+                <h3 className="text-xl font-black text-slate-900 mt-1">
+                  AI-Based Preliminary Claim Assessment
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Automated preliminary evaluation based on verified meteorological data, reported crop loss, and historical patterns.
+                </p>
+              </div>
+
+              {/* Predicted Eligibility Badge */}
+              <div>
+                {submittedClaim.ai_assessment?.predicted_eligibility === 'Likely Eligible for Insurance Claim' ? (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-emerald-600 text-white shadow-md shadow-emerald-600/20">
+                    <CheckCircle2 className="w-4 h-4" />
+                    Likely Eligible for Insurance Claim
+                  </span>
+                ) : submittedClaim.ai_assessment?.predicted_eligibility === 'Likely Not Eligible for Insurance Claim' ? (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-slate-800 text-slate-100 shadow-sm">
+                    <XCircle className="w-4 h-4 text-slate-400" />
+                    Likely Not Eligible for Insurance Claim
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    Insufficient Information to Predict
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Farm & Yield Overview Metrics */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] text-slate-500 block">Insured Crop</span>
+                <span className="text-sm font-bold text-slate-800 mt-0.5 block">
+                  {submittedClaim.crop_type}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {submittedClaim.cultivated_area} Ha ({submittedClaim.season})
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] text-slate-500 block">Reported Loss</span>
+                <span className="text-sm font-bold text-rose-600 mt-0.5 block">
+                  {submittedClaim.reported_loss_pct || (submittedClaim as any).crop_loss_percentage || 0}%
+                </span>
+                <span className="text-[10px] text-slate-400">Farmer self-report</span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] text-slate-500 block">Expected Harvest Output</span>
+                <span className="text-sm font-bold text-slate-800 mt-0.5 block">
+                  {submittedClaim.ai_assessment?.predicted_yield_display || (submittedClaim.expected_yield ? `${submittedClaim.expected_yield} T/Ha` : 'District Baseline')}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {submittedClaim.ai_assessment?.reference_yield_display || 'APY 30-yr benchmark'}
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
+                <span className="text-[11px] text-slate-500 block">AI Pattern Confidence</span>
+                <span className="text-sm font-bold text-slate-800 mt-0.5 block">
+                  {submittedClaim.ai_assessment?.confidence_percentage ? `${submittedClaim.ai_assessment.confidence_percentage}%` : '85%'}
+                </span>
+                <span className="text-[10px] text-slate-400">Random Forest Classifier</span>
+              </div>
+            </div>
+
+            {/* Supporting & Opposing Factors (SHAP Explanations) */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                Agro-Climatic Factors Influencing This Assessment
+              </h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Supporting factors */}
+                <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200 space-y-2">
+                  <div className="flex items-center gap-1.5 text-emerald-800 font-bold text-xs uppercase tracking-wide">
+                    <TrendingDown className="w-4 h-4 text-emerald-600" />
+                    Factors Supporting Claim Eligibility (Loss / Deficit)
+                  </div>
+                  {submittedClaim.ai_assessment?.reasons_supporting && submittedClaim.ai_assessment.reasons_supporting.length > 0 ? (
+                    <ul className="space-y-1.5 text-xs text-slate-700">
+                      {submittedClaim.ai_assessment.reasons_supporting.map((r: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2 leading-relaxed">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" />
+                          <span>{r}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">No severe deficit detected in automatic weather checks.</p>
+                  )}
+                </div>
+
+                {/* Opposing factors */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
+                  <div className="flex items-center gap-1.5 text-slate-800 font-bold text-xs uppercase tracking-wide">
+                    <TrendingUp className="w-4 h-4 text-sky-600" />
+                    Factors Opposing Claim / Good Crop Conditions
+                  </div>
+                  {submittedClaim.ai_assessment?.reasons_against && submittedClaim.ai_assessment.reasons_against.length > 0 ? (
+                    <ul className="space-y-1.5 text-xs text-slate-700">
+                      {submittedClaim.ai_assessment.reasons_against.map((r: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2 leading-relaxed">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 shrink-0" />
+                          <span>{r}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">No significant mitigating factors detected.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Farmer Friendly Summary */}
+              {submittedClaim.ai_assessment?.farmer_friendly_summary && (
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700 leading-relaxed">
+                  <strong className="text-slate-900 block mb-1">Plain Language Assessment Summary:</strong>
+                  {submittedClaim.ai_assessment.farmer_friendly_summary}
+                </div>
+              )}
+            </div>
+
+            {/* Prominent Statutory Disclaimer */}
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 text-xs leading-relaxed space-y-1">
+              <div className="flex items-center gap-2 font-black text-amber-900 uppercase tracking-wide">
+                <ShieldAlert className="w-4 h-4 text-amber-700" />
+                Statutory Notice • Preliminary AI Assessment Only
+              </div>
+              <p>
+                This is a preliminary AI assessment generated using crop loss patterns, historical yield data, and weather metrics. It does <strong>NOT</strong> represent an official insurance company or government claim approval, rejection, or settlement decision. Under PMFBY statutory guidelines, your claim will now undergo official field and documentary review by authorized agricultural insurance officers. You will receive final notifications through your claims dashboard.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmittedClaim(null);
+                  setSuccessRef(null);
+                  handleReset();
+                }}
+                className="text-xs text-slate-500 hover:text-slate-800 font-semibold flex items-center gap-1.5 transition order-3 sm:order-1 cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                Submit Another Claim
+              </button>
+
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto order-1 sm:order-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/')}
+                  className="w-full sm:w-auto px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <Home className="w-4 h-4 text-slate-600" />
+                  Back to Dashboard
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/claims')}
+                  className="w-full sm:w-auto px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-md shadow-emerald-600/30 flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <Eye className="w-4 h-4" />
+                  View in My Claims
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Validation Warnings / Error Banner */}
       {error && (
         <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex items-start gap-3 text-rose-800 text-xs animate-fadeIn">
           <AlertCircle className="w-5 h-5 text-rose-500 shrink-0 mt-0.5" />
@@ -1188,12 +1440,14 @@ export const NewClaimPage: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs md:text-sm font-bold shadow-md shadow-emerald-600/30 transition disabled:opacity-50"
+            className="flex items-center gap-1.5 px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs md:text-sm font-bold shadow-md shadow-emerald-600/30 transition disabled:opacity-50 cursor-pointer"
           >
             {loading ? (t('forms.submitting') || 'Submitting Application...') : (t('forms.submitClaim') || 'Submit Crop Insurance Claim')}
           </button>
         </div>
       </form>
+      </>
+      )}
     </div>
   );
 };

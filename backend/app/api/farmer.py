@@ -11,6 +11,7 @@ from backend.app.database.session import get_db
 from backend.app.database.models import User, Claim, ClaimAssessment, HumanReview, FarmerChatHistory
 from backend.app.core.auth import get_current_farmer
 from backend.app.services.sarvam_service import sarvam_service
+from backend.app.services.claim_service import build_claim_enrichment
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -27,6 +28,10 @@ class ClaimSummaryItem(BaseModel):
     workflow_stage: str
     sowing_date: str
     created_at: str
+    ai_prediction: Optional[Dict[str, Any]] = None
+    officer_decision: Optional[Dict[str, Any]] = None
+    comparison: Optional[Dict[str, Any]] = None
+    timeline_stages: Optional[List[Dict[str, Any]]] = None
 
 class DamageInfoResponse(BaseModel):
     claim_reference: str
@@ -126,21 +131,28 @@ def get_my_claims(
         (Claim.contact_number == current_farmer.phone_number)
     ).order_by(desc(Claim.created_at)).all()
 
-    return [
-        ClaimSummaryItem(
-            id=c.id,
-            claim_reference=c.claim_reference,
-            crop_type=c.crop_type,
-            season=f"{c.season} {c.sowing_date[:4] if c.sowing_date else '2025'}",
-            cultivated_area=c.cultivated_area,
-            reported_loss_pct=c.reported_loss_pct,
-            status=c.status,
-            workflow_stage=c.workflow_stage or "application_submitted",
-            sowing_date=c.sowing_date,
-            created_at=c.created_at.strftime("%Y-%m-%d") if c.created_at else "2025-10-10"
+    items = []
+    for c in claims:
+        enrichment = build_claim_enrichment(c)
+        items.append(
+            ClaimSummaryItem(
+                id=c.id,
+                claim_reference=c.claim_reference,
+                crop_type=c.crop_type,
+                season=f"{c.season} {c.sowing_date[:4] if c.sowing_date else '2025'}",
+                cultivated_area=c.cultivated_area,
+                reported_loss_pct=c.reported_loss_pct,
+                status=c.status,
+                workflow_stage=c.workflow_stage or "application_submitted",
+                sowing_date=c.sowing_date,
+                created_at=c.created_at.strftime("%Y-%m-%d") if c.created_at else "2025-10-10",
+                ai_prediction=enrichment.get("ai_assessment"),
+                officer_decision=enrichment.get("officer_decision"),
+                comparison=enrichment.get("comparison"),
+                timeline_stages=enrichment.get("timeline_stages")
+            )
         )
-        for c in claims
-    ]
+    return items
 
 @router.get("/claims/{claim_id}")
 def get_my_claim_details(
@@ -159,6 +171,7 @@ def get_my_claim_details(
 
     missing_docs = json.loads(claim.missing_documents or "[]")
     uploaded_docs = json.loads(claim.uploaded_documents_json or "[]")
+    enrichment = build_claim_enrichment(claim)
 
     return {
         "id": claim.id,
@@ -183,7 +196,12 @@ def get_my_claim_details(
         "next_expected_action": claim.next_expected_action or "Wait while your application is being reviewed.",
         "payment_status": claim.payment_status or "Pending",
         "payment_amount": claim.payment_amount,
-        "payment_reference": claim.payment_reference
+        "payment_reference": claim.payment_reference,
+        "ai_prediction": enrichment.get("ai_assessment"),
+        "ai_assessment": enrichment.get("ai_assessment"),
+        "officer_decision": enrichment.get("officer_decision"),
+        "comparison": enrichment.get("comparison"),
+        "timeline_stages": enrichment.get("timeline_stages")
     }
 
 @router.get("/claims/{claim_id}/timeline", response_model=TimelineResponse)
